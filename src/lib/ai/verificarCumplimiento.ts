@@ -189,5 +189,15 @@ ${
     );
   }
 
-  return toolUse.input as { resumen: string; resultados: RequisitoVerificado[] };
+  const raw = toolUse.input as { resumen: string; resultados: RequisitoVerificado[] | string };
+
+  // La IA a veces devuelve "resultados" como un string JSON en vez de un array nativo
+  // pese al schema forzado; se normaliza aquí para no romper el resto del flujo.
+  const resultados = typeof raw.resultados === "string" ? JSON.parse(raw.resultados) : raw.resultados;
+
+  if (!Array.isArray(resultados)) {
+    throw new Error("La IA no devolvió los resultados de verificación en el formato esperado. Intenta de nuevo.");
+  }
+
+  return { resumen: raw.resumen, resultados };
 }
