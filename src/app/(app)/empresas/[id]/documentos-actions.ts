@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { TipoEmpresaDocumento } from "@/lib/types";
+import {
+  extraerDetallesExperiencia,
+  type DetallesExperienciaExtraidos,
+} from "@/lib/ai/extraerDetallesExperiencia";
 
 export async function uploadEmpresaDocumento(empresaId: string, formData: FormData) {
   const supabase = createAdminClient();
@@ -96,6 +100,90 @@ export async function eliminarExperienciaDocumento(
   const supabase = createAdminClient();
   await supabase.storage.from("empresas").remove([storagePath]);
   const { error } = await supabase.from("experiencia_documentos").delete().eq("id", documentoId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/empresas/${empresaId}`);
+}
+
+const MAX_PDFS_CERTIFICADOS = 5;
+
+export async function extraerDetallesExperienciaAction(
+  empresaId: string,
+  experienciaId: string,
+): Promise<DetallesExperienciaExtraidos> {
+  const supabase = createAdminClient();
+
+  const [{ data: experiencia, error: expError }, { data: documentos, error: docsError }] =
+    await Promise.all([
+      supabase
+        .from("experiencia")
+        .select("entidad_contratante, objeto")
+        .eq("id", experienciaId)
+        .single(),
+      supabase.from("experiencia_documentos").select("*").eq("experiencia_id", experienciaId),
+    ]);
+
+  if (expError || !experiencia) throw new Error(expError?.message ?? "Contrato no encontrado");
+  if (docsError) throw new Error(docsError.message);
+
+  const pdfs = (documentos ?? []).filter(
+    (d) => d.content_type === "application/pdf" || d.nombre.toLowerCase().endsWith(".pdf"),
+  );
+
+  if (pdfs.length === 0) {
+    throw new Error("Sube el certificado en formato PDF antes de extraer los detalles.");
+  }
+  if (pdfs.length > MAX_PDFS_CERTIFICADOS) {
+    throw new Error(`Hay demasiados certificados (máx. ${MAX_PDFS_CERTIFICADOS}). Elimina los menos relevantes.`);
+  }
+
+  const documentosDescargados = await Promise.all(
+    pdfs.map(async (doc) => {
+      const { data: blob, error } = await supabase.storage.from("empresas").download(doc.storage_path);
+      if (error || !blob) {
+        throw new Error(`No se pudo descargar "${doc.nombre}": ${error?.message ?? "error desconocido"}`);
+      }
+      const base64 = Buffer.from(await blob.arrayBuffer()).toString("base64");
+      return { nombre: doc.nombre as string, base64 };
+    }),
+  );
+
+  return extraerDetallesExperiencia(
+    { entidad_contratante: experiencia.entidad_contratante, objeto: experiencia.objeto },
+    documentosDescargados,
+  );
+}
+
+export async function guardarDetallesExperiencia(
+  empresaId: string,
+  experienciaId: string,
+  detalles: DetallesExperienciaExtraidos,
+) {
+  const supabase = createAdminClient();
+
+  // Algunos contratos ya traen "detalles" poblado por importaciones anteriores
+  // (con otras claves, ej. caudal_lps, categorias_tecnicas). Se combina en vez de
+  // sobrescribir para no perder esa información.
+  const { data: actual, error: fetchError } = await supabase
+    .from("experiencia")
+    .select("detalles")
+    .eq("id", experienciaId)
+    .single();
+  if (fetchError) throw new Error(fetchError.message);
+
+  const detallesPrevios = (actual?.detalles as Record<string, unknown> | null) ?? {};
+  const combinados = {
+    ...detallesPrevios,
+    actividades: detalles.actividades,
+    notas: detalles.notas,
+  };
+
+  const hayContenidoNuevo = detalles.actividades.length > 0 || !!detalles.notas;
+  const hayContenidoPrevio = Object.keys(detallesPrevios).length > 0;
+
+  const { error } = await supabase
+    .from("experiencia")
+    .update({ detalles: hayContenidoNuevo || hayContenidoPrevio ? combinados : null })
+    .eq("id", experienciaId);
   if (error) throw new Error(error.message);
   revalidatePath(`/empresas/${empresaId}`);
 }

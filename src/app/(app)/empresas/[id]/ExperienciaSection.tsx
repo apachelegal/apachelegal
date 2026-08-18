@@ -159,6 +159,12 @@ export function ExperienciaSection({
                           {exp.sector}
                         </span>
                       )}
+                      {Array.isArray((exp.detalles as { actividades?: unknown[] } | null)?.actividades) &&
+                        ((exp.detalles as { actividades: unknown[] }).actividades.length > 0) && (
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700">
+                            {(exp.detalles as { actividades: unknown[] }).actividades.length} cantidades certificadas
+                          </span>
+                        )}
                     </div>
                     <p className="mt-0.5 text-sm text-slate-600">{exp.objeto}</p>
                     <p className="mt-1 text-xs text-slate-400">
@@ -200,6 +206,7 @@ export function ExperienciaSection({
                     empresaId={empresaId}
                     experienciaId={exp.id}
                     documentos={docs}
+                    detalles={exp.detalles}
                   />
                 )}
               </li>
