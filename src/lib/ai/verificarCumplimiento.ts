@@ -99,12 +99,15 @@ export async function verificarCumplimiento(
   requisitosFinancieros: RequisitoAnalisis[],
   requisitosTecnicos: RequisitoAnalisis[],
   empresas: EmpresaContexto[],
+  presupuestoOficial: number | null,
 ): Promise<{ resumen: string; resultados: RequisitoVerificado[] }> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
   const esEstructuraPlural = empresas.length > 1;
 
   const text = `Eres un abogado especializado en contratación estatal colombiana. Debes evaluar si él o los proponentes descritos abajo cumplen los requisitos habilitantes de una licitación pública, comparando cada requisito contra los datos reales de la(s) empresa(s).
+
+Presupuesto Oficial (PO) de esta invitación: ${presupuestoOficial != null ? formatoCOP(presupuestoOficial) : "no registrado en el sistema — cualquier requisito expresado como porcentaje del Presupuesto Oficial (capital de trabajo, patrimonio, experiencia en SMMLV, etc.) debe marcarse como no_determinable indicando que falta este dato"}. Usa este valor para calcular cualquier umbral financiero o de experiencia que el pliego exprese como porcentaje del Presupuesto Oficial (ej. "Capital de trabajo ≥ 30% del PO" significa Capital de trabajo ≥ ${presupuestoOficial != null ? formatoCOP(presupuestoOficial * 0.3) : "30% del PO"} cuando el porcentaje exigido sea 30%; ajusta el porcentaje al que realmente indique cada requisito).
 
 ${formatearRequisitos("REQUISITOS JURÍDICOS", requisitosJuridicos)}
 

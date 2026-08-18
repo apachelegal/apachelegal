@@ -8,7 +8,7 @@ import type { RequisitoAnalisis } from "@/lib/types";
 export async function verificarCumplimientoAction(licitacionId: string) {
   const supabase = createAdminClient();
 
-  const [{ data: analisis, error: analisisError }, { data: participantes, error: partError }] =
+  const [{ data: analisis, error: analisisError }, { data: participantes, error: partError }, { data: licitacion, error: licError }] =
     await Promise.all([
       supabase
         .from("analisis_licitacion")
@@ -19,10 +19,12 @@ export async function verificarCumplimientoAction(licitacionId: string) {
         .from("licitacion_participantes")
         .select("empresa_id, porcentaje_participacion, empresas(nombre, registra_obras_inconclusas, es_empresa_mujeres)")
         .eq("licitacion_id", licitacionId),
+      supabase.from("licitaciones").select("presupuesto").eq("id", licitacionId).single(),
     ]);
 
   if (analisisError) throw new Error(analisisError.message);
   if (partError) throw new Error(partError.message);
+  if (licError) throw new Error(licError.message);
 
   if (!analisis || analisis.estado !== "completado") {
     throw new Error("Analiza el pliego con IA antes de verificar el cumplimiento.");
@@ -99,6 +101,7 @@ export async function verificarCumplimientoAction(licitacionId: string) {
       (analisis.requisitos_financieros ?? []) as RequisitoAnalisis[],
       (analisis.requisitos_tecnicos ?? []) as RequisitoAnalisis[],
       empresasContexto,
+      licitacion?.presupuesto ?? null,
     );
 
     const { error: upsertError } = await supabase.from("verificacion_cumplimiento").upsert(
