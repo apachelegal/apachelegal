@@ -54,13 +54,30 @@ export async function guardarIndicadores(empresaId: string, formData: FormData) 
       capital_trabajo: num("capital_trabajo"),
       indice_liquidez: num("indice_liquidez"),
       indice_endeudamiento: num("indice_endeudamiento"),
+      razon_cobertura_intereses: num("razon_cobertura_intereses"),
       rentabilidad_patrimonio: num("rentabilidad_patrimonio"),
       rentabilidad_activo: num("rentabilidad_activo"),
+      activo_corriente: num("activo_corriente"),
+      pasivo_corriente: num("pasivo_corriente"),
+      activo_total: num("activo_total"),
+      pasivo_total: num("pasivo_total"),
+      utilidad_operacional: num("utilidad_operacional"),
+      gastos_financieros: num("gastos_financieros"),
       notas: String(formData.get("notas") ?? "").trim() || null,
     },
     { onConflict: "empresa_id,periodo" },
   );
 
+  if (error) throw new Error(error.message);
+  revalidatePath(`/empresas/${empresaId}`);
+}
+
+export async function actualizarCriteriosEmpresa(
+  empresaId: string,
+  criterios: { registra_obras_inconclusas: boolean | null; es_empresa_mujeres: boolean | null },
+) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("empresas").update(criterios).eq("id", empresaId);
   if (error) throw new Error(error.message);
   revalidatePath(`/empresas/${empresaId}`);
 }

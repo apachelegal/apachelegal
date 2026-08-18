@@ -14,6 +14,7 @@ import { IndicadoresSection } from "./IndicadoresSection";
 import { ExperienciaSection } from "./ExperienciaSection";
 import { EmpresaDocumentosSection } from "./EmpresaDocumentosSection";
 import { DatosJuridicosSection } from "./DatosJuridicosSection";
+import { CriteriosPuntajeSection } from "./CriteriosPuntajeSection";
 import { DeleteEmpresaButton } from "./DeleteEmpresaButton";
 
 export default async function EmpresaDetailPage({
@@ -67,6 +68,12 @@ export default async function EmpresaDetailPage({
         </div>
         <DeleteEmpresaButton id={emp.id} />
       </div>
+
+      <CriteriosPuntajeSection
+        empresaId={emp.id}
+        registraObrasInconclusas={emp.registra_obras_inconclusas}
+        esEmpresaMujeres={emp.es_empresa_mujeres}
+      />
 
       <EmpresaDocumentosSection
         empresaId={emp.id}

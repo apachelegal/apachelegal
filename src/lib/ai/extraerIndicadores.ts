@@ -11,6 +11,13 @@ export interface IndicadoresExtraidos {
   indice_endeudamiento: number | null;
   rentabilidad_patrimonio: number | null;
   rentabilidad_activo: number | null;
+  activo_corriente: number | null;
+  pasivo_corriente: number | null;
+  activo_total: number | null;
+  pasivo_total: number | null;
+  utilidad_operacional: number | null;
+  gastos_financieros: number | null;
+  razon_cobertura_intereses: number | null;
   notas: string | null;
 }
 
@@ -30,10 +37,21 @@ Extrae los indicadores financieros del período más reciente disponible y regí
 - Capital de trabajo (activo corriente menos pasivo corriente)
 - Índice de liquidez (activo corriente / pasivo corriente)
 - Índice de endeudamiento, como porcentaje (pasivo total / activo total × 100)
+- Razón de cobertura de intereses (utilidad operacional / gastos financieros o de intereses)
 - Rentabilidad del patrimonio, como porcentaje (utilidad operacional / patrimonio × 100)
 - Rentabilidad del activo, como porcentaje (utilidad operacional / activo total × 100)
 
-Si el documento ya trae estos indicadores calculados (como suele pasar en el RUP), úsalos directamente en vez de recalcularlos. Si algún valor no aparece o no se puede determinar con certeza, déjalo sin diligenciar — no inventes cifras. En "notas" indica el período exacto de corte de los datos y cualquier advertencia relevante (por ejemplo si los datos parecen desactualizados).`,
+Además, extrae también los VALORES CONTABLES BASE de donde salen esos indicadores, si el documento los trae por separado (el RUP normalmente los incluye en la sección de información financiera):
+- Activo corriente
+- Pasivo corriente
+- Activo total
+- Pasivo total
+- Utilidad operacional
+- Gastos financieros (gastos de intereses)
+
+Estos valores contables base son importantes cuando esta empresa participe en un consorcio o unión temporal, porque para combinar correctamente los indicadores de varias empresas se deben sumar los valores base (no promediar los ratios ya calculados).
+
+Si el documento ya trae los indicadores calculados (como suele pasar en el RUP), úsalos directamente en vez de recalcularlos. Si algún valor no aparece o no se puede determinar con certeza, déjalo sin diligenciar — no inventes cifras. En "notas" indica el período exacto de corte de los datos y cualquier advertencia relevante (por ejemplo si los datos parecen desactualizados).`,
     },
     ...documentos.map((doc) => ({
       type: "document" as const,
@@ -61,8 +79,15 @@ Si el documento ya trae estos indicadores calculados (como suele pasar en el RUP
             capital_trabajo: { type: "number" },
             indice_liquidez: { type: "number" },
             indice_endeudamiento: { type: "number", description: "Como porcentaje, ej. 42 para 42%" },
+            razon_cobertura_intereses: { type: "number" },
             rentabilidad_patrimonio: { type: "number", description: "Como porcentaje" },
             rentabilidad_activo: { type: "number", description: "Como porcentaje" },
+            activo_corriente: { type: "number" },
+            pasivo_corriente: { type: "number" },
+            activo_total: { type: "number" },
+            pasivo_total: { type: "number" },
+            utilidad_operacional: { type: "number" },
+            gastos_financieros: { type: "number" },
             notas: { type: "string" },
           },
           required: ["periodo"],

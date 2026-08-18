@@ -463,3 +463,15 @@ create policy "authenticated write entidades storage" on storage.objects
   for insert with check (bucket_id = 'entidades' and auth.role() = 'authenticated');
 create policy "authenticated delete entidades storage" on storage.objects
   for delete using (bucket_id = 'entidades' and auth.role() = 'authenticated');
+
+-- Migración: datos contables base para indicadores de consorcios + criterios de puntaje EAAB
+alter table indicadores_financieros add column if not exists activo_corriente numeric;
+alter table indicadores_financieros add column if not exists pasivo_corriente numeric;
+alter table indicadores_financieros add column if not exists activo_total numeric;
+alter table indicadores_financieros add column if not exists pasivo_total numeric;
+alter table indicadores_financieros add column if not exists utilidad_operacional numeric;
+alter table indicadores_financieros add column if not exists gastos_financieros numeric;
+alter table indicadores_financieros add column if not exists razon_cobertura_intereses numeric;
+
+alter table empresas add column if not exists registra_obras_inconclusas boolean;
+alter table empresas add column if not exists es_empresa_mujeres boolean;

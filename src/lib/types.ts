@@ -136,6 +136,8 @@ export interface Empresa {
   nombre: string;
   nit: string | null;
   notas: string | null;
+  registra_obras_inconclusas: boolean | null;
+  es_empresa_mujeres: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -150,6 +152,13 @@ export interface IndicadorFinanciero {
   indice_endeudamiento: number | null;
   rentabilidad_patrimonio: number | null;
   rentabilidad_activo: number | null;
+  activo_corriente: number | null;
+  pasivo_corriente: number | null;
+  activo_total: number | null;
+  pasivo_total: number | null;
+  utilidad_operacional: number | null;
+  gastos_financieros: number | null;
+  razon_cobertura_intereses: number | null;
   notas: string | null;
   created_at: string;
   updated_at: string;

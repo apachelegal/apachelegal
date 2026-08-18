@@ -13,8 +13,15 @@ const CAMPOS = [
   "capital_trabajo",
   "indice_liquidez",
   "indice_endeudamiento",
+  "razon_cobertura_intereses",
   "rentabilidad_patrimonio",
   "rentabilidad_activo",
+  "activo_corriente",
+  "pasivo_corriente",
+  "activo_total",
+  "pasivo_total",
+  "utilidad_operacional",
+  "gastos_financieros",
 ] as const;
 
 export function IndicadoresSection({
@@ -143,6 +150,58 @@ export function IndicadoresSection({
             step="0.01"
             inputRef={(el) => (inputRefs.current.rentabilidad_activo = el ?? undefined)}
           />
+          <Field
+            label="Razón cobertura intereses"
+            name="razon_cobertura_intereses"
+            type="number"
+            step="0.01"
+            inputRef={(el) => (inputRefs.current.razon_cobertura_intereses = el ?? undefined)}
+          />
+        </div>
+
+        <div className="mt-1 border-t border-dashed border-slate-200 pt-3">
+          <p className="mb-2 text-xs font-medium text-slate-500">
+            Valores contables base (opcionales) — necesarios para combinar correctamente los
+            indicadores cuando esta empresa participe en un consorcio o unión temporal.
+          </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Field
+              label="Activo corriente (COP)"
+              name="activo_corriente"
+              type="number"
+              inputRef={(el) => (inputRefs.current.activo_corriente = el ?? undefined)}
+            />
+            <Field
+              label="Pasivo corriente (COP)"
+              name="pasivo_corriente"
+              type="number"
+              inputRef={(el) => (inputRefs.current.pasivo_corriente = el ?? undefined)}
+            />
+            <Field
+              label="Activo total (COP)"
+              name="activo_total"
+              type="number"
+              inputRef={(el) => (inputRefs.current.activo_total = el ?? undefined)}
+            />
+            <Field
+              label="Pasivo total (COP)"
+              name="pasivo_total"
+              type="number"
+              inputRef={(el) => (inputRefs.current.pasivo_total = el ?? undefined)}
+            />
+            <Field
+              label="Utilidad operacional (COP)"
+              name="utilidad_operacional"
+              type="number"
+              inputRef={(el) => (inputRefs.current.utilidad_operacional = el ?? undefined)}
+            />
+            <Field
+              label="Gastos financieros (COP)"
+              name="gastos_financieros"
+              type="number"
+              inputRef={(el) => (inputRefs.current.gastos_financieros = el ?? undefined)}
+            />
+          </div>
         </div>
 
         {notaExtraccion && (
@@ -185,11 +244,19 @@ export function IndicadoresSection({
                 <th className="py-2 pr-4 font-medium">Endeudamiento</th>
                 <th className="py-2 pr-4 font-medium">Rent. patrimonio</th>
                 <th className="py-2 pr-4 font-medium">Rent. activo</th>
+                <th className="py-2 pr-4 font-medium">Base contable</th>
                 <th className="py-2"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {ordenados.map((ind) => (
+              {ordenados.map((ind) => {
+                const baseCompleta =
+                  ind.activo_corriente != null &&
+                  ind.pasivo_corriente != null &&
+                  ind.activo_total != null &&
+                  ind.pasivo_total != null &&
+                  ind.utilidad_operacional != null;
+                return (
                 <tr key={ind.id}>
                   <td className="py-2 pr-4 font-medium text-slate-800">{ind.periodo}</td>
                   <td className="py-2 pr-4 text-slate-600">{formatCOP(ind.patrimonio)}</td>
@@ -204,6 +271,16 @@ export function IndicadoresSection({
                   <td className="py-2 pr-4 text-slate-600">
                     {ind.rentabilidad_activo != null ? `${ind.rentabilidad_activo}%` : "—"}
                   </td>
+                  <td className="py-2 pr-4">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        baseCompleta ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-500"
+                      }`}
+                      title="Activo/pasivo corriente y total, utilidad operacional"
+                    >
+                      {baseCompleta ? "Completa" : "Incompleta"}
+                    </span>
+                  </td>
                   <td className="py-2 text-right">
                     <button
                       onClick={() => handleEliminar(ind.id)}
@@ -215,7 +292,8 @@ export function IndicadoresSection({
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

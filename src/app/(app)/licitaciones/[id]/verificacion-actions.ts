@@ -17,7 +17,7 @@ export async function verificarCumplimientoAction(licitacionId: string) {
         .maybeSingle(),
       supabase
         .from("licitacion_participantes")
-        .select("empresa_id, porcentaje_participacion, empresas(nombre)")
+        .select("empresa_id, porcentaje_participacion, empresas(nombre, registra_obras_inconclusas, es_empresa_mujeres)")
         .eq("licitacion_id", licitacionId),
     ]);
 
@@ -49,11 +49,17 @@ export async function verificarCumplimientoAction(licitacionId: string) {
   const empresasContexto: EmpresaContexto[] = participantes.map((p) => {
     const indicadorMasReciente = (indicadores ?? []).find((i) => i.empresa_id === p.empresa_id) ?? null;
     const experienciaEmpresa = (experiencia ?? []).filter((e) => e.empresa_id === p.empresa_id);
-    const nombreEmpresa = (p.empresas as unknown as { nombre: string } | null)?.nombre ?? "Empresa";
+    const empresaInfo = p.empresas as unknown as {
+      nombre: string;
+      registra_obras_inconclusas: boolean | null;
+      es_empresa_mujeres: boolean | null;
+    } | null;
 
     return {
-      nombre: nombreEmpresa,
+      nombre: empresaInfo?.nombre ?? "Empresa",
       participacionPct: p.porcentaje_participacion,
+      registraObrasInconclusas: empresaInfo?.registra_obras_inconclusas ?? null,
+      esEmpresaMujeres: empresaInfo?.es_empresa_mujeres ?? null,
       indicadores: indicadorMasReciente
         ? {
             periodo: indicadorMasReciente.periodo,
@@ -61,19 +67,29 @@ export async function verificarCumplimientoAction(licitacionId: string) {
             capital_trabajo: indicadorMasReciente.capital_trabajo,
             indice_liquidez: indicadorMasReciente.indice_liquidez,
             indice_endeudamiento: indicadorMasReciente.indice_endeudamiento,
+            razon_cobertura_intereses: indicadorMasReciente.razon_cobertura_intereses,
             rentabilidad_patrimonio: indicadorMasReciente.rentabilidad_patrimonio,
             rentabilidad_activo: indicadorMasReciente.rentabilidad_activo,
+            activo_corriente: indicadorMasReciente.activo_corriente,
+            pasivo_corriente: indicadorMasReciente.pasivo_corriente,
+            activo_total: indicadorMasReciente.activo_total,
+            pasivo_total: indicadorMasReciente.pasivo_total,
+            utilidad_operacional: indicadorMasReciente.utilidad_operacional,
+            gastos_financieros: indicadorMasReciente.gastos_financieros,
           }
         : null,
-      experiencia: experienciaEmpresa.map((e) => ({
-        entidad_contratante: e.entidad_contratante,
-        objeto: e.objeto,
-        valor: e.valor,
-        sector: e.sector,
-        fecha_inicio: e.fecha_inicio,
-        fecha_terminacion: e.fecha_terminacion,
-        participacion_pct: e.participacion_pct,
-      })),
+      experienciaExcluidaEnEjecucion: experienciaEmpresa.filter((e) => e.estado === "en_ejecucion").length,
+      experiencia: experienciaEmpresa
+        .filter((e) => e.estado !== "en_ejecucion")
+        .map((e) => ({
+          entidad_contratante: e.entidad_contratante,
+          objeto: e.objeto,
+          valor: e.valor,
+          sector: e.sector,
+          fecha_inicio: e.fecha_inicio,
+          fecha_terminacion: e.fecha_terminacion,
+          participacion_pct: e.participacion_pct,
+        })),
     };
   });
 
