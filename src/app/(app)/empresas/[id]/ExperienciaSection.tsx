@@ -90,6 +90,7 @@ export function ExperienciaSection({
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Field label="Sector" name="sector" />
             <Field label="Valor (COP)" name="valor" type="number" />
+            <Field label="Valor (SMMLV)" name="valor_smmlv" type="number" />
             <Field label="Participación (%)" name="participacion_pct" type="number" placeholder="100" />
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-slate-600">Estado</label>
@@ -107,6 +108,8 @@ export function ExperienciaSection({
             </div>
             <Field label="Fecha de inicio" name="fecha_inicio" type="date" />
             <Field label="Fecha de terminación" name="fecha_terminacion" type="date" />
+            <Field label="Código UNSPSC (RUP)" name="codigo_unspsc" placeholder="81101500" />
+            <Field label="Consecutivo RUP" name="consecutivo_rup" />
           </div>
           <button
             type="submit"

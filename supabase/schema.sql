@@ -475,3 +475,7 @@ alter table indicadores_financieros add column if not exists razon_cobertura_int
 
 alter table empresas add column if not exists registra_obras_inconclusas boolean;
 alter table empresas add column if not exists es_empresa_mujeres boolean;
+
+-- Migración: código UNSPSC y consecutivo RUP por contrato de experiencia (Formulario No. 2 EAAB)
+alter table experiencia add column if not exists codigo_unspsc text;
+alter table experiencia add column if not exists consecutivo_rup text;

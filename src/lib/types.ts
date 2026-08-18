@@ -182,6 +182,8 @@ export interface Experiencia {
   fecha_terminacion: string | null;
   estado: EstadoExperiencia;
   duracion_meses: number | null;
+  codigo_unspsc: string | null;
+  consecutivo_rup: string | null;
   detalles: Record<string, unknown> | null;
   origen_archivo: string | null;
   created_at: string;

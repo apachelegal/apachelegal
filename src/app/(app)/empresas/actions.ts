@@ -111,10 +111,13 @@ export async function crearExperiencia(empresaId: string, formData: FormData) {
     objeto,
     sector: String(formData.get("sector") ?? "").trim() || null,
     valor: num("valor"),
+    valor_smmlv: num("valor_smmlv"),
     participacion_pct: num("participacion_pct"),
     fecha_inicio: String(formData.get("fecha_inicio") ?? "") || null,
     fecha_terminacion: String(formData.get("fecha_terminacion") ?? "") || null,
     estado: String(formData.get("estado") ?? "ejecutado"),
+    codigo_unspsc: String(formData.get("codigo_unspsc") ?? "").trim() || null,
+    consecutivo_rup: String(formData.get("consecutivo_rup") ?? "").trim() || null,
     origen_archivo: "manual",
   });
 

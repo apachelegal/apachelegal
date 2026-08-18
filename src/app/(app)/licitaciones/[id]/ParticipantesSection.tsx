@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { Loader2, Plus, Trash2, Users } from "lucide-react";
+import { FileSpreadsheet, Loader2, Plus, Trash2, Users } from "lucide-react";
 import { agregarParticipante, eliminarParticipante } from "./participantes-actions";
 import type { Empresa } from "@/lib/types";
 
@@ -153,6 +153,16 @@ export function ParticipantesSection({
                 );
               })}
             </ul>
+          )}
+
+          {participantes.length > 0 && (
+            <a
+              href={`/licitaciones/${licitacionId}/formulario2`}
+              className="mt-4 flex w-fit items-center gap-2 rounded-lg border border-blue-200 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50"
+            >
+              <FileSpreadsheet size={14} />
+              Descargar Formulario No. 2 (Excel — experiencia y capacidad financiera)
+            </a>
           )}
         </>
       )}
