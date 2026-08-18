@@ -479,3 +479,25 @@ alter table empresas add column if not exists es_empresa_mujeres boolean;
 -- Migración: código UNSPSC y consecutivo RUP por contrato de experiencia (Formulario No. 2 EAAB)
 alter table experiencia add column if not exists codigo_unspsc text;
 alter table experiencia add column if not exists consecutivo_rup text;
+
+-- Migración: selección de contratos de experiencia habilitante por licitación (máx. 4 por RUP)
+create table if not exists licitacion_experiencia_seleccionada (
+  id uuid primary key default gen_random_uuid(),
+  licitacion_id uuid not null references licitaciones (id) on delete cascade,
+  experiencia_id uuid not null references experiencia (id) on delete cascade,
+  justificacion text,
+  actividad_acreditada text,
+  origen text not null default 'manual',
+  created_at timestamptz not null default now(),
+  unique (licitacion_id, experiencia_id)
+);
+create index if not exists licitacion_experiencia_seleccionada_licitacion_idx
+  on licitacion_experiencia_seleccionada (licitacion_id);
+
+alter table licitacion_experiencia_seleccionada enable row level security;
+create policy "authenticated read licitacion_experiencia_seleccionada" on licitacion_experiencia_seleccionada
+  for select using (auth.role() = 'authenticated');
+create policy "authenticated write licitacion_experiencia_seleccionada" on licitacion_experiencia_seleccionada
+  for insert with check (auth.role() = 'authenticated');
+create policy "authenticated delete licitacion_experiencia_seleccionada" on licitacion_experiencia_seleccionada
+  for delete using (auth.role() = 'authenticated');

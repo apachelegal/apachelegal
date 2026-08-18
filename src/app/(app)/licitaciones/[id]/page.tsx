@@ -9,7 +9,9 @@ import type {
   Documento,
   Empresa,
   EntidadContratante,
+  Experiencia,
   Licitacion,
+  LicitacionExperienciaSeleccionada,
   Tarea,
   VerificacionCumplimiento,
 } from "@/lib/types";
@@ -20,6 +22,7 @@ import { AnalisisIASection } from "./AnalisisIASection";
 import { CronogramaSection } from "./CronogramaSection";
 import { PaqueteLicitacionSection } from "./PaqueteLicitacionSection";
 import { ParticipantesSection } from "./ParticipantesSection";
+import { SeleccionExperienciaSection } from "./SeleccionExperienciaSection";
 import { VerificacionCumplimientoSection } from "./VerificacionCumplimientoSection";
 import { EntidadVinculadaSection } from "./EntidadVinculadaSection";
 
@@ -67,6 +70,39 @@ export default async function LicitacionDetailPage({
         .select("*", { count: "exact", head: true })
         .eq("entidad_id", lic.entidad_id)
     : { count: 0 };
+
+  const participanteEmpresaIds = (participantes ?? []).map((p) => p.empresa_id);
+  const empresasPorId = new Map((empresas ?? []).map((e) => [e.id, e as Empresa]));
+
+  const [{ data: experienciaParticipantes }, { data: seleccionExperiencia }] =
+    participanteEmpresaIds.length > 0
+      ? await Promise.all([
+          supabase
+            .from("experiencia")
+            .select("*")
+            .in("empresa_id", participanteEmpresaIds)
+            .neq("estado", "en_ejecucion"),
+          supabase
+            .from("licitacion_experiencia_seleccionada")
+            .select("*")
+            .eq("licitacion_id", id),
+        ])
+      : [{ data: [] as Experiencia[] }, { data: [] as LicitacionExperienciaSeleccionada[] }];
+
+  const empresasConExperiencia = participanteEmpresaIds.map((empresaId) => ({
+    empresaId,
+    nombre: empresasPorId.get(empresaId)?.nombre ?? "Empresa",
+    experiencia: ((experienciaParticipantes ?? []) as Experiencia[]).filter(
+      (e) => e.empresa_id === empresaId,
+    ),
+  }));
+
+  const seleccionActual = new Map(
+    ((seleccionExperiencia ?? []) as LicitacionExperienciaSeleccionada[]).map((s) => [
+      s.experiencia_id,
+      s,
+    ]),
+  );
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
@@ -122,6 +158,18 @@ export default async function LicitacionDetailPage({
         licitacionId={lic.id}
         participantes={participantes ?? []}
         empresas={(empresas ?? []) as Empresa[]}
+      />
+
+      <SeleccionExperienciaSection
+        licitacionId={lic.id}
+        empresas={empresasConExperiencia}
+        seleccionActual={seleccionActual}
+        puedeSugerir={(analisis as AnalisisLicitacion | null)?.estado === "completado"}
+        motivoBloqueo={
+          (analisis as AnalisisLicitacion | null)?.estado !== "completado"
+            ? "Analiza el pliego con IA antes de sugerir la selección de experiencia."
+            : null
+        }
       />
 
       <DocumentosSection licitacionId={lic.id} documentos={(documentos ?? []) as Documento[]} />

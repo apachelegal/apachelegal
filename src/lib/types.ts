@@ -314,3 +314,13 @@ export interface ManualContratacion {
   content_type: string | null;
   created_at: string;
 }
+
+export interface LicitacionExperienciaSeleccionada {
+  id: string;
+  licitacion_id: string;
+  experiencia_id: string;
+  justificacion: string | null;
+  actividad_acreditada: string | null;
+  origen: "ia" | "manual";
+  created_at: string;
+}

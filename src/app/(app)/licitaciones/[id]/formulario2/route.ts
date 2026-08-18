@@ -34,7 +34,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const empresaIds = participantes.map((p) => p.empresa_id);
 
-  const [{ data: indicadores, error: indError }, { data: experiencia, error: expError }] =
+  const [{ data: indicadores, error: indError }, { data: experiencia, error: expError }, { data: seleccion, error: selError }] =
     await Promise.all([
       supabase
         .from("indicadores_financieros")
@@ -46,17 +46,22 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         .select("*")
         .in("empresa_id", empresaIds)
         .neq("estado", "en_ejecucion"),
+      supabase.from("licitacion_experiencia_seleccionada").select("experiencia_id").eq("licitacion_id", id),
     ]);
 
   if (indError) return NextResponse.json({ error: indError.message }, { status: 500 });
   if (expError) return NextResponse.json({ error: expError.message }, { status: 500 });
+  if (selError) return NextResponse.json({ error: selError.message }, { status: 500 });
+
+  const idsSeleccionados = new Set((seleccion ?? []).map((s) => s.experiencia_id));
+  const usarSeleccion = idsSeleccionados.size > 0;
 
   const participantesFormulario: ParticipanteFormulario2[] = participantes.map((p) => {
     const empresaInfo = p.empresas as unknown as { nombre: string; nit: string | null } | null;
     const indicador =
       ((indicadores ?? []) as IndicadorFinanciero[]).find((i) => i.empresa_id === p.empresa_id) ?? null;
     const experienciaEmpresa = ((experiencia ?? []) as Experiencia[]).filter(
-      (e) => e.empresa_id === p.empresa_id,
+      (e) => e.empresa_id === p.empresa_id && (!usarSeleccion || idsSeleccionados.has(e.id)),
     );
 
     return {
