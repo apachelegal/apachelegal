@@ -6,7 +6,7 @@ export type EstadoLicitacion =
   | "perdida"
   | "cancelada";
 
-export type TipoDocumento = "pliego" | "propuesta" | "anexo" | "contrato" | "otro";
+export type TipoDocumento = "pliego" | "propuesta" | "anexo" | "adenda" | "contrato" | "otro";
 
 export interface Licitacion {
   id: string;
@@ -50,6 +50,7 @@ export const TIPO_DOCUMENTO_LABELS: Record<TipoDocumento, string> = {
   pliego: "Pliego",
   propuesta: "Propuesta",
   anexo: "Anexo",
+  adenda: "Adenda / Aviso que modifica el pliego",
   contrato: "Contrato",
   otro: "Otro",
 };

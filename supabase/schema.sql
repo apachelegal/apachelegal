@@ -501,3 +501,8 @@ create policy "authenticated write licitacion_experiencia_seleccionada" on licit
   for insert with check (auth.role() = 'authenticated');
 create policy "authenticated delete licitacion_experiencia_seleccionada" on licitacion_experiencia_seleccionada
   for delete using (auth.role() = 'authenticated');
+
+-- Migración: tipo "adenda" para documentos (avisos/adendas que modifican el pliego y sí deben analizarse)
+alter table documentos drop constraint if exists documentos_tipo_check;
+alter table documentos add constraint documentos_tipo_check
+  check (tipo in ('pliego', 'propuesta', 'anexo', 'adenda', 'contrato', 'otro'));

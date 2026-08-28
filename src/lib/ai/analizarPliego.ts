@@ -18,12 +18,13 @@ const REQUISITO_SCHEMA = {
 };
 
 export async function analizarDocumentos(
-  documentos: { nombre: string; base64: string }[],
+  documentos: { nombre: string; base64: string; esAdenda?: boolean }[],
   manuales: { nombre: string; base64: string }[] = [],
 ): Promise<AnalisisResultado> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
   const hayManuales = manuales.length > 0;
+  const hayAdendas = documentos.some((d) => d.esAdenda);
 
   const content: Anthropic.Messages.ContentBlockParam[] = [
     {
@@ -31,6 +32,10 @@ export async function analizarDocumentos(
       text: `Eres un abogado especializado en contratación estatal colombiana (licitaciones públicas y procesos de selección). A continuación se adjuntan el pliego de condiciones de un proceso de licitación específico y, si aplica, sus anexos.${
         hayManuales
           ? ` También se adjunta el MANUAL DE CONTRATACIÓN GENERAL de la entidad (marcado como tal más abajo): contiene las reglas y procedimientos generales que aplican a todos los procesos de esa entidad. Úsalo como contexto de respaldo — si el pliego específico no menciona un requisito pero el manual general sí lo exige, inclúyelo citando el manual como fuente; si el pliego específico contradice o modifica el manual general, prevalece siempre el pliego específico.`
+          : ""
+      }${
+        hayAdendas
+          ? ` También se adjuntan una o más ADENDAS o AVISOS OFICIALES (marcados como tal más abajo con el prefijo "ADENDA/AVISO:") emitidos por la entidad DESPUÉS del pliego original, que pueden modificar fechas, requisitos u otras condiciones. Cuando una adenda/aviso contradiga o actualice algo del pliego original (por ejemplo, una nueva fecha para el mismo evento del cronograma), SIEMPRE prevalece la información de la adenda/aviso por ser posterior — usa la fecha o condición actualizada, no la original, y menciona en la fuente que proviene de la adenda/aviso correspondiente.`
           : ""
       }
 
@@ -74,7 +79,7 @@ Para cada fecha clave, el campo "fecha" debe ser una única fecha exacta en form
         media_type: "application/pdf" as const,
         data: doc.base64,
       },
-      title: doc.nombre.slice(0, 240),
+      title: (doc.esAdenda ? `ADENDA/AVISO: ${doc.nombre}` : doc.nombre).slice(0, 240),
     })),
   ];
 

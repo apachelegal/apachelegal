@@ -17,7 +17,7 @@ export async function analizarLicitacion(licitacionId: string) {
         .from("documentos")
         .select("*")
         .eq("licitacion_id", licitacionId)
-        .in("tipo", ["pliego", "anexo"]),
+        .in("tipo", ["pliego", "anexo", "adenda"]),
     ]);
 
   if (licError) throw new Error(licError.message);
@@ -45,7 +45,7 @@ export async function analizarLicitacion(licitacionId: string) {
         throw new Error(`No se pudo descargar "${doc.nombre}": ${error?.message ?? "error desconocido"}`);
       }
       const base64 = Buffer.from(await blob.arrayBuffer()).toString("base64");
-      return { id: doc.id as string, nombre: doc.nombre as string, base64 };
+      return { id: doc.id as string, nombre: doc.nombre as string, base64, tipo: doc.tipo as string };
     }),
   );
 
@@ -75,7 +75,7 @@ export async function analizarLicitacion(licitacionId: string) {
 
   try {
     const resultado = await analizarDocumentos(
-      documentosDescargados.map(({ nombre, base64 }) => ({ nombre, base64 })),
+      documentosDescargados.map(({ nombre, base64, tipo }) => ({ nombre, base64, esAdenda: tipo === "adenda" })),
       manualesDescargados,
     );
 
