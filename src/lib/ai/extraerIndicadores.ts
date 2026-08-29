@@ -18,6 +18,9 @@ export interface IndicadoresExtraidos {
   utilidad_operacional: number | null;
   gastos_financieros: number | null;
   razon_cobertura_intereses: number | null;
+  efectivo_generado_operacion: number | null;
+  efectivo_y_equivalentes: number | null;
+  deuda_financiera: number | null;
   notas: string | null;
 }
 
@@ -50,6 +53,13 @@ Además, extrae también los VALORES CONTABLES BASE de donde salen esos indicado
 - Gastos financieros (gastos de intereses)
 
 Estos valores contables base son importantes cuando esta empresa participe en un consorcio o unión temporal, porque para combinar correctamente los indicadores de varias empresas se deben sumar los valores base (no promediar los ratios ya calculados).
+
+Si el documento adjunto incluye un ESTADO DE FLUJOS DE EFECTIVO (no solo el RUP), extrae también estos tres valores, que sirven para calcular indicadores reales de Cobertura de Intereses y Múltiplo de Deuda Neta:
+- Efectivo Generado por Actividades de Operación (EAO / flujo de caja operacional)
+- Efectivo y equivalentes de efectivo (saldo de caja/bancos e inversiones temporales al corte)
+- Deuda financiera (obligaciones financieras con bancos/leasing, distinta del pasivo total)
+
+Estos tres valores casi nunca aparecen en un RUP. Si el documento adjunto es solo un RUP o un resumen sin estado de flujos de efectivo, déjalos sin diligenciar — NO los aproximes con la utilidad operacional ni con el pasivo total, es matemáticamente incorrecto y puede llevar a una decisión equivocada sobre si la empresa cumple o no un requisito financiero.
 
 Si el documento ya trae los indicadores calculados (como suele pasar en el RUP), úsalos directamente en vez de recalcularlos. Si algún valor no aparece o no se puede determinar con certeza, déjalo sin diligenciar — no inventes cifras. En "notas" indica el período exacto de corte de los datos y cualquier advertencia relevante (por ejemplo si los datos parecen desactualizados).`,
     },
@@ -88,6 +98,18 @@ Si el documento ya trae los indicadores calculados (como suele pasar en el RUP),
             pasivo_total: { type: "number" },
             utilidad_operacional: { type: "number" },
             gastos_financieros: { type: "number" },
+            efectivo_generado_operacion: {
+              type: "number",
+              description: "Efectivo Generado por Actividades de Operación (EAO), solo si el documento trae un estado de flujos de efectivo",
+            },
+            efectivo_y_equivalentes: {
+              type: "number",
+              description: "Efectivo y equivalentes de efectivo al corte, solo si el documento lo detalla",
+            },
+            deuda_financiera: {
+              type: "number",
+              description: "Deuda financiera (obligaciones con bancos/leasing), distinta del pasivo total",
+            },
             notas: { type: "string" },
           },
           required: ["periodo"],

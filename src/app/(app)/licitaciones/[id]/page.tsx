@@ -22,6 +22,7 @@ import { AnalisisIASection } from "./AnalisisIASection";
 import { CronogramaSection } from "./CronogramaSection";
 import { PaqueteLicitacionSection } from "./PaqueteLicitacionSection";
 import { ParticipantesSection } from "./ParticipantesSection";
+import { BuscarEmpresasSection } from "./BuscarEmpresasSection";
 import { SeleccionExperienciaSection } from "./SeleccionExperienciaSection";
 import { VerificacionCumplimientoSection } from "./VerificacionCumplimientoSection";
 import { EntidadVinculadaSection } from "./EntidadVinculadaSection";
@@ -158,6 +159,11 @@ export default async function LicitacionDetailPage({
         licitacionId={lic.id}
         participantes={participantes ?? []}
         empresas={(empresas ?? []) as Empresa[]}
+      />
+
+      <BuscarEmpresasSection
+        licitacionId={lic.id}
+        puedeBuscar={(analisis as AnalisisLicitacion | null)?.estado === "completado"}
       />
 
       <SeleccionExperienciaSection

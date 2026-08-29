@@ -22,6 +22,9 @@ const CAMPOS = [
   "pasivo_total",
   "utilidad_operacional",
   "gastos_financieros",
+  "efectivo_generado_operacion",
+  "efectivo_y_equivalentes",
+  "deuda_financiera",
 ] as const;
 
 export function IndicadoresSection({
@@ -200,6 +203,33 @@ export function IndicadoresSection({
               name="gastos_financieros"
               type="number"
               inputRef={(el) => (inputRefs.current.gastos_financieros = el ?? undefined)}
+            />
+          </div>
+        </div>
+
+        <div className="border-t border-dashed border-slate-200 pt-3">
+          <p className="mb-2 text-xs font-medium text-slate-500">
+            Estado de flujos de efectivo (opcional) — solo si el documento fuente lo trae; necesario
+            para calcular Cobertura de Intereses y Múltiplo de Deuda Neta reales, sin aproximarlos.
+          </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Field
+              label="Efectivo generado por operación (COP)"
+              name="efectivo_generado_operacion"
+              type="number"
+              inputRef={(el) => (inputRefs.current.efectivo_generado_operacion = el ?? undefined)}
+            />
+            <Field
+              label="Efectivo y equivalentes (COP)"
+              name="efectivo_y_equivalentes"
+              type="number"
+              inputRef={(el) => (inputRefs.current.efectivo_y_equivalentes = el ?? undefined)}
+            />
+            <Field
+              label="Deuda financiera (COP)"
+              name="deuda_financiera"
+              type="number"
+              inputRef={(el) => (inputRefs.current.deuda_financiera = el ?? undefined)}
             />
           </div>
         </div>

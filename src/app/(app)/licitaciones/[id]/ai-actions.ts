@@ -89,6 +89,8 @@ export async function analizarLicitacion(licitacionId: string) {
         requisitos_tecnicos: resultado.requisitos_tecnicos,
         anexos_detectados: resultado.anexos_detectados,
         fechas_clave: resultado.fechas_clave,
+        requisitos_financieros_estructurado: resultado.requisitos_financieros_estructurado ?? null,
+        requisitos_tecnicos_estructurado: resultado.requisitos_tecnicos_estructurado ?? null,
         error_mensaje: null,
         modelo: "claude-sonnet-5",
         documentos_analizados: documentosDescargados.map((d) => d.id),

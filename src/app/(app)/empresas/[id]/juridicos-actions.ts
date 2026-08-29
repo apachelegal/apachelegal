@@ -53,6 +53,11 @@ export async function extraerDatosJuridicosAction(empresaId: string) {
 
   const resultado = await extraerDatosJuridicos(documentosDescargados, experiencia ?? []);
 
+  const capitalSocial =
+    typeof resultado.capital_social === "number" && Number.isFinite(resultado.capital_social)
+      ? resultado.capital_social
+      : null;
+
   const { error: upsertError } = await supabase.from("empresa_datos_juridicos").upsert(
     {
       empresa_id: empresaId,
@@ -62,7 +67,7 @@ export async function extraerDatosJuridicosAction(empresaId: string) {
       objeto_social: resultado.objeto_social ?? null,
       fecha_constitucion: resultado.fecha_constitucion ?? null,
       duracion_sociedad: resultado.duracion_sociedad ?? null,
-      capital_social: resultado.capital_social ?? null,
+      capital_social: capitalSocial,
       matricula_mercantil: resultado.matricula_mercantil ?? null,
       fecha_ultima_renovacion: resultado.fecha_ultima_renovacion ?? null,
       clasificacion_rup: resultado.clasificacion_rup,

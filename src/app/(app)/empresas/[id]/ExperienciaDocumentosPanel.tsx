@@ -1,15 +1,17 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { FileText, Upload, Download, Trash2, Loader2, Sparkles, Plus, X, Save } from "lucide-react";
+import { FileText, Upload, Download, Trash2, Loader2, Sparkles, Plus, X, Save, ShieldCheck } from "lucide-react";
 import {
   uploadExperienciaDocumento,
   eliminarExperienciaDocumento,
   getEmpresaDocumentoUrl,
   extraerDetallesExperienciaAction,
   guardarDetallesExperiencia,
+  verificarTitularExperienciaAction,
 } from "./documentos-actions";
-import type { ExperienciaDocumento } from "@/lib/types";
+import type { ExperienciaDocumento, VerificacionTitular } from "@/lib/types";
+import { VERIFICACION_TITULAR_LABELS } from "@/lib/types";
 import type { ActividadDetalle, DetallesExperienciaExtraidos } from "@/lib/ai/extraerDetallesExperiencia";
 import { formatBytes } from "@/lib/format";
 
@@ -25,16 +27,25 @@ export function ExperienciaDocumentosPanel({
   experienciaId,
   documentos,
   detalles,
+  verificacionTitular,
+  verificacionTitularNota,
 }: {
   empresaId: string;
   experienciaId: string;
   documentos: ExperienciaDocumento[];
   detalles: Record<string, unknown> | null;
+  verificacionTitular: VerificacionTitular;
+  verificacionTitularNota: string | null;
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [extrayendo, setExtrayendo] = useState(false);
+  const [verificando, setVerificando] = useState(false);
+  const [resultadoVerificacion, setResultadoVerificacion] = useState<{
+    rol: VerificacionTitular;
+    nota: string;
+  } | null>(null);
   const [detallesEdit, setDetallesEdit] = useState<DetallesExperienciaExtraidos>(() =>
     detallesDesdeGuardados(detalles),
   );
@@ -96,6 +107,19 @@ export function ExperienciaDocumentosPanel({
       setError(e instanceof Error ? e.message : "Error al extraer los detalles con IA");
     } finally {
       setExtrayendo(false);
+    }
+  }
+
+  async function handleVerificarTitular() {
+    setError(null);
+    setVerificando(true);
+    try {
+      const resultado = await verificarTitularExperienciaAction(empresaId, experienciaId);
+      setResultadoVerificacion(resultado);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al verificar el titular del contrato");
+    } finally {
+      setVerificando(false);
     }
   }
 
@@ -193,6 +217,45 @@ export function ExperienciaDocumentosPanel({
           ))}
         </ul>
       )}
+
+      <div className="mb-3 border-t border-slate-200 pt-2">
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-xs font-medium text-slate-600">
+            Titular del contrato:{" "}
+            <span
+              className={
+                verificacionTitular === "no_coincide" || resultadoVerificacion?.rol === "no_coincide"
+                  ? "font-semibold text-red-600"
+                  : verificacionTitular === "sin_verificar" && !resultadoVerificacion
+                    ? "text-slate-400"
+                    : "font-semibold text-emerald-700"
+              }
+            >
+              {VERIFICACION_TITULAR_LABELS[resultadoVerificacion?.rol ?? verificacionTitular]}
+            </span>
+          </p>
+          <button
+            onClick={handleVerificarTitular}
+            disabled={documentos.length === 0 || verificando}
+            className="flex items-center gap-1 rounded-md border border-blue-200 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+            title={documentos.length === 0 ? "Sube un certificado en PDF primero" : "Confirma leyendo el PDF si esta empresa es realmente la contratista"}
+          >
+            {verificando ? <Loader2 size={12} className="animate-spin" /> : <ShieldCheck size={12} />}
+            Verificar titular
+          </button>
+        </div>
+        {(resultadoVerificacion?.nota ?? verificacionTitularNota) && (
+          <p
+            className={`mb-1 rounded-md px-2 py-1.5 text-[11px] ${
+              (resultadoVerificacion?.rol ?? verificacionTitular) === "no_coincide"
+                ? "bg-red-50 text-red-700"
+                : "bg-slate-100 text-slate-600"
+            }`}
+          >
+            {resultadoVerificacion?.nota ?? verificacionTitularNota}
+          </p>
+        )}
+      </div>
 
       <div className="border-t border-slate-200 pt-2">
         <div className="mb-2 flex items-center justify-between">

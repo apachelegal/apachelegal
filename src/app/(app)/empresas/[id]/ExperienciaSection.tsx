@@ -3,7 +3,12 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import { Briefcase, ChevronDown, ChevronUp, Loader2, Paperclip, Plus, Search, Trash2 } from "lucide-react";
 import { crearExperiencia, eliminarExperiencia } from "../actions";
-import { ESTADO_EXPERIENCIA_LABELS, type Experiencia, type ExperienciaDocumento } from "@/lib/types";
+import {
+  ESTADO_EXPERIENCIA_LABELS,
+  VERIFICACION_TITULAR_LABELS,
+  type Experiencia,
+  type ExperienciaDocumento,
+} from "@/lib/types";
 import { formatCOP, formatDate } from "@/lib/format";
 import { ExperienciaDocumentosPanel } from "./ExperienciaDocumentosPanel";
 
@@ -165,6 +170,24 @@ export function ExperienciaSection({
                             {(exp.detalles as { actividades: unknown[] }).actividades.length} cantidades certificadas
                           </span>
                         )}
+                      {exp.verificacion_titular === "no_coincide" && (
+                        <span
+                          className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700"
+                          title={exp.verificacion_titular_nota ?? undefined}
+                        >
+                          ⚠ Contratista no coincide
+                        </span>
+                      )}
+                      {(exp.verificacion_titular === "contratista_directo" ||
+                        exp.verificacion_titular === "consorciado" ||
+                        exp.verificacion_titular === "subcontratista") && (
+                        <span
+                          className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"
+                          title={exp.verificacion_titular_nota ?? undefined}
+                        >
+                          {VERIFICACION_TITULAR_LABELS[exp.verificacion_titular]}
+                        </span>
+                      )}
                     </div>
                     <p className="mt-0.5 text-sm text-slate-600">{exp.objeto}</p>
                     <p className="mt-1 text-xs text-slate-400">
@@ -207,6 +230,8 @@ export function ExperienciaSection({
                     experienciaId={exp.id}
                     documentos={docs}
                     detalles={exp.detalles}
+                    verificacionTitular={exp.verificacion_titular}
+                    verificacionTitularNota={exp.verificacion_titular_nota}
                   />
                 )}
               </li>

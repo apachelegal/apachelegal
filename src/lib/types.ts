@@ -63,6 +63,49 @@ export interface RequisitoAnalisis {
   fuente?: string;
 }
 
+export type UnidadIndicadorFinanciero = "absoluto" | "ratio" | "porcentaje";
+export type ModoEvaluacionIndicador = "por_año" | "promedio" | "mas_reciente";
+
+export interface TramoPuntajeIndicador {
+  min?: number;
+  max?: number;
+  puntos: number;
+  etiqueta?: string;
+}
+
+export interface IndicadorFinancieroRequisito {
+  nombre: string;
+  campo_base?: string;
+  formula?: string;
+  unidad: UnidadIndicadorFinanciero;
+  tramos: TramoPuntajeIndicador[];
+  ponderable_por_participacion: boolean;
+  fuente?: string;
+}
+
+export interface RequisitosFinancierosEstructurado {
+  indicadores: IndicadorFinancieroRequisito[];
+  puntaje_minimo_total: number | null;
+  modo_evaluacion: ModoEvaluacionIndicador;
+  anios_evaluados: number | null;
+  notas?: string;
+}
+
+export type TratamientoSubcontratista = "excluye" | "permite_con_reglas" | "permite";
+
+export interface RequisitosTecnicosEstructurado {
+  categorias_elegibles: string[];
+  max_contratos: number | null;
+  min_contratos_por_integrante: number | null;
+  max_integrantes_forma_asociativa: number | null;
+  valor_minimo_acumulado_smmlv: number | null;
+  ventana_recencia_anios: number | null;
+  tratamiento_subcontratista: TratamientoSubcontratista;
+  reglas_subcontratista?: string;
+  permite_experiencia_accionista_empresa_nueva: boolean;
+  notas?: string;
+}
+
 export interface AnexoDetectado {
   nombre: string;
   descripcion?: string;
@@ -79,6 +122,8 @@ export interface AnalisisResultado {
   requisitos_juridicos: RequisitoAnalisis[];
   requisitos_financieros: RequisitoAnalisis[];
   requisitos_tecnicos: RequisitoAnalisis[];
+  requisitos_financieros_estructurado?: RequisitosFinancierosEstructurado | null;
+  requisitos_tecnicos_estructurado?: RequisitosTecnicosEstructurado | null;
   anexos_detectados: AnexoDetectado[];
   fechas_clave: FechaClave[];
 }
@@ -90,6 +135,8 @@ export interface AnalisisLicitacion {
   requisitos_juridicos: RequisitoAnalisis[] | null;
   requisitos_financieros: RequisitoAnalisis[] | null;
   requisitos_tecnicos: RequisitoAnalisis[] | null;
+  requisitos_financieros_estructurado: RequisitosFinancierosEstructurado | null;
+  requisitos_tecnicos_estructurado: RequisitosTecnicosEstructurado | null;
   anexos_detectados: AnexoDetectado[] | null;
   fechas_clave: FechaClave[] | null;
   error_mensaje: string | null;
@@ -160,12 +207,21 @@ export interface IndicadorFinanciero {
   utilidad_operacional: number | null;
   gastos_financieros: number | null;
   razon_cobertura_intereses: number | null;
+  efectivo_generado_operacion: number | null;
+  efectivo_y_equivalentes: number | null;
+  deuda_financiera: number | null;
   notas: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export type EstadoExperiencia = "ejecutado" | "liquidado" | "en_ejecucion";
+export type VerificacionTitular =
+  | "sin_verificar"
+  | "contratista_directo"
+  | "consorciado"
+  | "subcontratista"
+  | "no_coincide";
 
 export interface Experiencia {
   id: string;
@@ -187,6 +243,10 @@ export interface Experiencia {
   consecutivo_rup: string | null;
   detalles: Record<string, unknown> | null;
   origen_archivo: string | null;
+  verificacion_titular: VerificacionTitular;
+  verificacion_titular_nota: string | null;
+  verificacion_titular_fecha: string | null;
+  verificacion_titular_documento_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -195,6 +255,14 @@ export const ESTADO_EXPERIENCIA_LABELS: Record<EstadoExperiencia, string> = {
   ejecutado: "Ejecutado",
   liquidado: "Liquidado",
   en_ejecucion: "En ejecución",
+};
+
+export const VERIFICACION_TITULAR_LABELS: Record<VerificacionTitular, string> = {
+  sin_verificar: "Sin verificar",
+  contratista_directo: "Contratista directo",
+  consorciado: "Consorciado",
+  subcontratista: "Subcontratista",
+  no_coincide: "Contratista no coincide",
 };
 
 export interface LicitacionParticipante {

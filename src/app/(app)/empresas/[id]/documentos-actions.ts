@@ -7,6 +7,7 @@ import {
   extraerDetallesExperiencia,
   type DetallesExperienciaExtraidos,
 } from "@/lib/ai/extraerDetallesExperiencia";
+import { verificarTitularExperiencia } from "@/lib/ai/verificarTitularExperiencia";
 
 export async function uploadEmpresaDocumento(empresaId: string, formData: FormData) {
   const supabase = createAdminClient();
@@ -186,4 +187,68 @@ export async function guardarDetallesExperiencia(
     .eq("id", experienciaId);
   if (error) throw new Error(error.message);
   revalidatePath(`/empresas/${empresaId}`);
+}
+
+export async function verificarTitularExperienciaAction(empresaId: string, experienciaId: string) {
+  const supabase = createAdminClient();
+
+  const [{ data: experiencia, error: expError }, { data: documentos, error: docsError }, { data: empresa, error: empError }] =
+    await Promise.all([
+      supabase
+        .from("experiencia")
+        .select("entidad_contratante, objeto, numero_contrato")
+        .eq("id", experienciaId)
+        .single(),
+      supabase.from("experiencia_documentos").select("*").eq("experiencia_id", experienciaId),
+      supabase.from("empresas").select("nombre").eq("id", empresaId).single(),
+    ]);
+
+  if (expError || !experiencia) throw new Error(expError?.message ?? "Contrato no encontrado");
+  if (docsError) throw new Error(docsError.message);
+  if (empError || !empresa) throw new Error(empError?.message ?? "Empresa no encontrada");
+
+  const pdfs = (documentos ?? []).filter(
+    (d) => d.content_type === "application/pdf" || d.nombre.toLowerCase().endsWith(".pdf"),
+  );
+
+  if (pdfs.length === 0) {
+    throw new Error("Sube el certificado en formato PDF antes de verificar el titular.");
+  }
+
+  const documentosDescargados = await Promise.all(
+    pdfs.map(async (doc) => {
+      const { data: blob, error } = await supabase.storage.from("empresas").download(doc.storage_path);
+      if (error || !blob) {
+        throw new Error(`No se pudo descargar "${doc.nombre}": ${error?.message ?? "error desconocido"}`);
+      }
+      const base64 = Buffer.from(await blob.arrayBuffer()).toString("base64");
+      return { nombre: doc.nombre as string, base64, id: doc.id as string };
+    }),
+  );
+
+  const resultado = await verificarTitularExperiencia(
+    {
+      empresaNombre: empresa.nombre,
+      entidad_contratante: experiencia.entidad_contratante,
+      objeto: experiencia.objeto,
+      numero_contrato: experiencia.numero_contrato,
+    },
+    documentosDescargados,
+  );
+
+  const { error: updateError } = await supabase
+    .from("experiencia")
+    .update({
+      verificacion_titular: resultado.rol,
+      verificacion_titular_nota: resultado.nota,
+      verificacion_titular_fecha: new Date().toISOString(),
+      verificacion_titular_documento_id: documentosDescargados[0].id,
+    })
+    .eq("id", experienciaId);
+
+  if (updateError) throw new Error(updateError.message);
+
+  revalidatePath(`/empresas/${empresaId}`);
+
+  return resultado;
 }

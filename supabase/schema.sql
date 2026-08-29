@@ -506,3 +506,27 @@ create policy "authenticated delete licitacion_experiencia_seleccionada" on lici
 alter table documentos drop constraint if exists documentos_tipo_check;
 alter table documentos add constraint documentos_tipo_check
   check (tipo in ('pliego', 'propuesta', 'anexo', 'adenda', 'contrato', 'otro'));
+
+-- Migración: requisitos estructurados genéricos (indicadores financieros por tramos, reglas
+-- técnicas) extraídos por IA además de los arrays de texto libre existentes, para poder
+-- calificar empresas y consorcios sin recalcular todo a mano.
+alter table analisis_licitacion add column if not exists requisitos_financieros_estructurado jsonb;
+alter table analisis_licitacion add column if not exists requisitos_tecnicos_estructurado jsonb;
+
+-- Migración: campos de flujo de caja real, para calcular Cobertura de Intereses y Múltiplo de
+-- Deuda Neta reales en vez de aproximarlos con utilidad_operacional.
+alter table indicadores_financieros add column if not exists efectivo_generado_operacion numeric;
+alter table indicadores_financieros add column if not exists efectivo_y_equivalentes numeric;
+alter table indicadores_financieros add column if not exists deuda_financiera numeric;
+
+-- Migración: verificación del rol contractual real de la empresa en un contrato de experiencia,
+-- contra el certificado PDF adjunto (detecta casos donde el contratista certificado es un
+-- tercero distinto de la empresa, o donde la empresa participó como subcontratista/consorciado
+-- y no como contratista directo).
+alter table experiencia add column if not exists verificacion_titular text
+  default 'sin_verificar'
+  check (verificacion_titular in ('sin_verificar', 'contratista_directo', 'consorciado', 'subcontratista', 'no_coincide'));
+alter table experiencia add column if not exists verificacion_titular_nota text;
+alter table experiencia add column if not exists verificacion_titular_fecha timestamptz;
+alter table experiencia add column if not exists verificacion_titular_documento_id uuid
+  references experiencia_documentos (id) on delete set null;
