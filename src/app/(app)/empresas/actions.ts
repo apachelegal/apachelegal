@@ -147,3 +147,39 @@ export async function eliminarExperiencia(empresaId: string, id: string) {
   if (error) throw new Error(error.message);
   revalidatePath(`/empresas/${empresaId}`);
 }
+
+export async function crearEmpleado(empresaId: string, formData: FormData) {
+  const supabase = createAdminClient();
+
+  const nombre = String(formData.get("nombre") ?? "").trim();
+  if (!nombre) throw new Error("El nombre del empleado es obligatorio");
+
+  const num = (key: string) => {
+    const v = formData.get(key);
+    if (!v || String(v).trim() === "") return null;
+    return Number(v);
+  };
+
+  const { error } = await supabase.from("empleados").insert({
+    empresa_id: empresaId,
+    nombre,
+    cargo: String(formData.get("cargo") ?? "").trim() || null,
+    tipo_contrato: String(formData.get("tipo_contrato") ?? "termino_fijo"),
+    salario: num("salario"),
+    fecha_ingreso: String(formData.get("fecha_ingreso") ?? "") || null,
+    fecha_salida: String(formData.get("fecha_salida") ?? "") || null,
+    notas: String(formData.get("notas") ?? "").trim() || null,
+  });
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/empresas/${empresaId}`);
+  revalidatePath("/reportes");
+}
+
+export async function eliminarEmpleado(empresaId: string, id: string) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("empleados").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/empresas/${empresaId}`);
+  revalidatePath("/reportes");
+}

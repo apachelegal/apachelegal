@@ -192,6 +192,35 @@ export interface Empresa {
   updated_at: string;
 }
 
+export type TipoContrato =
+  | "termino_fijo"
+  | "termino_indefinido"
+  | "obra_labor"
+  | "prestacion_servicios"
+  | "aprendizaje";
+
+export const TIPO_CONTRATO_LABELS: Record<TipoContrato, string> = {
+  termino_fijo: "Término fijo",
+  termino_indefinido: "Término indefinido",
+  obra_labor: "Obra o labor",
+  prestacion_servicios: "Prestación de servicios",
+  aprendizaje: "Contrato de aprendizaje",
+};
+
+export interface Empleado {
+  id: string;
+  empresa_id: string;
+  nombre: string;
+  cargo: string | null;
+  tipo_contrato: TipoContrato;
+  salario: number | null;
+  fecha_ingreso: string | null;
+  fecha_salida: string | null;
+  notas: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface IndicadorFinanciero {
   id: string;
   empresa_id: string;

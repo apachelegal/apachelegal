@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type {
+  Empleado,
   Empresa,
   EmpresaDatosJuridicos,
   EmpresaDocumento,
@@ -16,6 +17,7 @@ import { EmpresaDocumentosSection } from "./EmpresaDocumentosSection";
 import { DatosJuridicosSection } from "./DatosJuridicosSection";
 import { CriteriosPuntajeSection } from "./CriteriosPuntajeSection";
 import { RolEmpresaSection } from "./RolEmpresaSection";
+import { PersonalSection } from "./PersonalSection";
 import { DeleteEmpresaButton } from "./DeleteEmpresaButton";
 
 export default async function EmpresaDetailPage({
@@ -32,12 +34,14 @@ export default async function EmpresaDetailPage({
     { data: experiencia },
     { data: empresaDocumentos },
     { data: datosJuridicos },
+    { data: empleados },
   ] = await Promise.all([
     supabase.from("empresas").select("*").eq("id", id).single(),
     supabase.from("indicadores_financieros").select("*").eq("empresa_id", id),
     supabase.from("experiencia").select("*").eq("empresa_id", id),
     supabase.from("empresa_documentos").select("*").eq("empresa_id", id).order("created_at", { ascending: false }),
     supabase.from("empresa_datos_juridicos").select("*").eq("empresa_id", id).maybeSingle(),
+    supabase.from("empleados").select("*").eq("empresa_id", id),
   ]);
 
   if (error || !empresa) notFound();
@@ -112,6 +116,8 @@ export default async function EmpresaDetailPage({
         experiencia={(experiencia ?? []) as Experiencia[]}
         documentosPorExperiencia={documentosPorExperiencia}
       />
+
+      <PersonalSection empresaId={emp.id} empleados={(empleados ?? []) as Empleado[]} />
     </div>
   );
 }

@@ -536,3 +536,31 @@ alter table experiencia add column if not exists verificacion_titular_documento_
 -- adjudicada. No son excluyentes: la misma empresa puede tener ambos roles.
 alter table empresas add column if not exists participa_licitaciones boolean not null default true;
 alter table empresas add column if not exists ejecuta_obra boolean not null default false;
+
+-- Migración: planta de personal básica por empresa, para poder reportar cabeza de conteo,
+-- tipo de vinculación y contratos próximos a vencer (base del reporte laboral).
+create table if not exists empleados (
+  id uuid primary key default gen_random_uuid(),
+  empresa_id uuid not null references empresas (id) on delete cascade,
+  nombre text not null,
+  cargo text,
+  tipo_contrato text not null default 'termino_fijo'
+    check (tipo_contrato in ('termino_fijo', 'termino_indefinido', 'obra_labor', 'prestacion_servicios', 'aprendizaje')),
+  salario numeric,
+  fecha_ingreso date,
+  fecha_salida date,
+  notas text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists empleados_empresa_id_idx on empleados (empresa_id);
+
+alter table empleados enable row level security;
+create policy "authenticated read empleados" on empleados
+  for select using (auth.role() = 'authenticated');
+create policy "authenticated write empleados" on empleados
+  for insert with check (auth.role() = 'authenticated');
+create policy "authenticated update empleados" on empleados
+  for update using (auth.role() = 'authenticated');
+create policy "authenticated delete empleados" on empleados
+  for delete using (auth.role() = 'authenticated');
