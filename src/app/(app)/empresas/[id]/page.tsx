@@ -15,6 +15,7 @@ import { ExperienciaSection } from "./ExperienciaSection";
 import { EmpresaDocumentosSection } from "./EmpresaDocumentosSection";
 import { DatosJuridicosSection } from "./DatosJuridicosSection";
 import { CriteriosPuntajeSection } from "./CriteriosPuntajeSection";
+import { RolEmpresaSection } from "./RolEmpresaSection";
 import { DeleteEmpresaButton } from "./DeleteEmpresaButton";
 
 export default async function EmpresaDetailPage({
@@ -68,6 +69,12 @@ export default async function EmpresaDetailPage({
         </div>
         <DeleteEmpresaButton id={emp.id} />
       </div>
+
+      <RolEmpresaSection
+        empresaId={emp.id}
+        participaLicitaciones={emp.participa_licitaciones}
+        ejecutaObra={emp.ejecuta_obra}
+      />
 
       <CriteriosPuntajeSection
         empresaId={emp.id}

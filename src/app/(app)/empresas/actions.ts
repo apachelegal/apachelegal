@@ -16,6 +16,8 @@ export async function crearEmpresa(formData: FormData) {
       nombre,
       nit: String(formData.get("nit") ?? "").trim() || null,
       notas: String(formData.get("notas") ?? "").trim() || null,
+      participa_licitaciones: formData.get("participa_licitaciones") === "on",
+      ejecuta_obra: formData.get("ejecuta_obra") === "on",
     })
     .select("id")
     .single();
@@ -83,6 +85,17 @@ export async function actualizarCriteriosEmpresa(
   const { error } = await supabase.from("empresas").update(criterios).eq("id", empresaId);
   if (error) throw new Error(error.message);
   revalidatePath(`/empresas/${empresaId}`);
+}
+
+export async function actualizarRolEmpresa(
+  empresaId: string,
+  rol: { participa_licitaciones: boolean; ejecuta_obra: boolean },
+) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("empresas").update(rol).eq("id", empresaId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/empresas/${empresaId}`);
+  revalidatePath("/empresas");
 }
 
 export async function eliminarIndicadores(empresaId: string, id: string) {

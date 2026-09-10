@@ -530,3 +530,9 @@ alter table experiencia add column if not exists verificacion_titular_nota text;
 alter table experiencia add column if not exists verificacion_titular_fecha timestamptz;
 alter table experiencia add column if not exists verificacion_titular_documento_id uuid
   references experiencia_documentos (id) on delete set null;
+
+-- Migración: rol de cada empresa del grupo dentro del negocio — quiénes participan en
+-- licitaciones (firman como proponente/consorciado) y quiénes ejecutan la obra una vez
+-- adjudicada. No son excluyentes: la misma empresa puede tener ambos roles.
+alter table empresas add column if not exists participa_licitaciones boolean not null default true;
+alter table empresas add column if not exists ejecuta_obra boolean not null default false;

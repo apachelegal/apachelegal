@@ -186,6 +186,8 @@ export interface Empresa {
   notas: string | null;
   registra_obras_inconclusas: boolean | null;
   es_empresa_mujeres: boolean | null;
+  participa_licitaciones: boolean;
+  ejecuta_obra: boolean;
   created_at: string;
   updated_at: string;
 }
