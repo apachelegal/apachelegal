@@ -183,3 +183,40 @@ export async function eliminarEmpleado(empresaId: string, id: string) {
   revalidatePath(`/empresas/${empresaId}`);
   revalidatePath("/reportes");
 }
+
+export async function crearAsignacion(empresaId: string, empleadoId: string, formData: FormData) {
+  const supabase = createAdminClient();
+
+  const proyecto = String(formData.get("proyecto") ?? "").trim();
+  if (!proyecto) throw new Error("El proyecto/obra es obligatorio");
+
+  const num = (key: string) => {
+    const v = formData.get(key);
+    if (!v || String(v).trim() === "") return null;
+    return Number(v);
+  };
+
+  const { error } = await supabase.from("asignaciones_personal").insert({
+    empleado_id: empleadoId,
+    licitacion_id: String(formData.get("licitacion_id") ?? "").trim() || null,
+    proyecto,
+    rol: String(formData.get("rol") ?? "").trim() || null,
+    dedicacion_pct: num("dedicacion_pct"),
+    contratado_por: String(formData.get("contratado_por") ?? "").trim() || null,
+    fecha_inicio: String(formData.get("fecha_inicio") ?? "") || null,
+    fecha_fin: String(formData.get("fecha_fin") ?? "") || null,
+    notas: String(formData.get("notas") ?? "").trim() || null,
+  });
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/empresas/${empresaId}`);
+  revalidatePath("/reportes");
+}
+
+export async function eliminarAsignacion(empresaId: string, id: string) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("asignaciones_personal").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/empresas/${empresaId}`);
+  revalidatePath("/reportes");
+}

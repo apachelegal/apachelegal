@@ -3,13 +3,25 @@
 import { useRef, useState, useTransition } from "react";
 import { ChevronDown, ChevronUp, Loader2, Plus, Trash2, Users } from "lucide-react";
 import { crearEmpleado, eliminarEmpleado } from "../actions";
-import { TIPO_CONTRATO_LABELS, type Empleado } from "@/lib/types";
+import { TIPO_CONTRATO_LABELS, type AsignacionPersonal, type Empleado } from "@/lib/types";
 import { formatCOP, formatDate } from "@/lib/format";
+import { AsignacionesPanel } from "./AsignacionesPanel";
 
-export function PersonalSection({ empresaId, empleados }: { empresaId: string; empleados: Empleado[] }) {
+export function PersonalSection({
+  empresaId,
+  empleados,
+  asignacionesPorEmpleado,
+  licitaciones,
+}: {
+  empresaId: string;
+  empleados: Empleado[];
+  asignacionesPorEmpleado: Record<string, AsignacionPersonal[]>;
+  licitaciones: { id: string; entidad: string; objeto: string }[];
+}) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [expandido, setExpandido] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   function handleCrear(formData: FormData) {
@@ -103,38 +115,59 @@ export function PersonalSection({ empresaId, empleados }: { empresaId: string; e
         <p className="text-sm text-slate-400">No hay personal registrado todavía.</p>
       ) : (
         <ul className="divide-y divide-slate-100">
-          {ordenados.map((emp) => (
-            <li key={emp.id} className="flex items-start justify-between gap-4 py-3">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-medium text-slate-800">{emp.nombre}</p>
-                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
-                    {TIPO_CONTRATO_LABELS[emp.tipo_contrato]}
-                  </span>
-                  {emp.fecha_salida && (
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                      Inactivo
-                    </span>
-                  )}
+          {ordenados.map((emp) => {
+            const asignaciones = asignacionesPorEmpleado[emp.id] ?? [];
+            const abierto = expandido === emp.id;
+            return (
+              <li key={emp.id} className="py-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-slate-800">{emp.nombre}</p>
+                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
+                        {TIPO_CONTRATO_LABELS[emp.tipo_contrato]}
+                      </span>
+                      {emp.fecha_salida && (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                          Inactivo
+                        </span>
+                      )}
+                    </div>
+                    {emp.cargo && <p className="mt-0.5 text-sm text-slate-600">{emp.cargo}</p>}
+                    <p className="mt-1 text-xs text-slate-400">
+                      {formatDate(emp.fecha_ingreso)} –{" "}
+                      {emp.fecha_salida ? formatDate(emp.fecha_salida) : "actualidad"}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <p className="text-right text-sm font-medium text-slate-800">{formatCOP(emp.salario)}</p>
+                    <button
+                      onClick={() => setExpandido(abierto ? null : emp.id)}
+                      className="rounded-lg px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                    >
+                      Asignaciones ({asignaciones.length})
+                    </button>
+                    <button
+                      onClick={() => handleEliminar(emp)}
+                      disabled={isPending}
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                      aria-label="Eliminar"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
-                {emp.cargo && <p className="mt-0.5 text-sm text-slate-600">{emp.cargo}</p>}
-                <p className="mt-1 text-xs text-slate-400">
-                  {formatDate(emp.fecha_ingreso)} – {emp.fecha_salida ? formatDate(emp.fecha_salida) : "actualidad"}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <p className="text-right text-sm font-medium text-slate-800">{formatCOP(emp.salario)}</p>
-                <button
-                  onClick={() => handleEliminar(emp)}
-                  disabled={isPending}
-                  className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                  aria-label="Eliminar"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </li>
-          ))}
+                {abierto && (
+                  <AsignacionesPanel
+                    empresaId={empresaId}
+                    empleadoId={emp.id}
+                    asignaciones={asignaciones}
+                    licitaciones={licitaciones}
+                  />
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

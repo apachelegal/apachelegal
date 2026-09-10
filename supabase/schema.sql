@@ -564,3 +564,36 @@ create policy "authenticated update empleados" on empleados
   for update using (auth.role() = 'authenticated');
 create policy "authenticated delete empleados" on empleados
   for delete using (auth.role() = 'authenticated');
+
+-- Migración: asignación de personal a proyectos/obras con % de dedicación. Nace de que la matriz
+-- mínima de personal que exigen entidades como la EAAB se verifica por proyecto, y una misma
+-- persona puede estar asignada a más de un proyecto a la vez — lo que hay que vigilar es que la
+-- suma de dedicaciones activas de una persona no pase de 100%. licitacion_id es opcional porque
+-- una obra en ejecución puede no tener (o ya no tener, si se creó antes de esta app) una fila en
+-- licitaciones; en ese caso "proyecto" es el único identificador del proyecto/obra.
+create table if not exists asignaciones_personal (
+  id uuid primary key default gen_random_uuid(),
+  empleado_id uuid not null references empleados (id) on delete cascade,
+  licitacion_id uuid references licitaciones (id) on delete set null,
+  proyecto text not null,
+  rol text,
+  dedicacion_pct numeric,
+  contratado_por text,
+  fecha_inicio date,
+  fecha_fin date,
+  notas text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists asignaciones_personal_empleado_id_idx on asignaciones_personal (empleado_id);
+create index if not exists asignaciones_personal_licitacion_id_idx on asignaciones_personal (licitacion_id);
+
+alter table asignaciones_personal enable row level security;
+create policy "authenticated read asignaciones_personal" on asignaciones_personal
+  for select using (auth.role() = 'authenticated');
+create policy "authenticated write asignaciones_personal" on asignaciones_personal
+  for insert with check (auth.role() = 'authenticated');
+create policy "authenticated update asignaciones_personal" on asignaciones_personal
+  for update using (auth.role() = 'authenticated');
+create policy "authenticated delete asignaciones_personal" on asignaciones_personal
+  for delete using (auth.role() = 'authenticated');

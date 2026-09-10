@@ -7,6 +7,7 @@ import { formatCOP } from "@/lib/format";
 import {
   ESTADO_LABELS,
   TIPO_CONTRATO_LABELS,
+  type AsignacionPersonal,
   type Empleado,
   type Empresa,
   type EstadoLicitacion,
@@ -28,12 +29,14 @@ async function getDatos() {
     { data: licitaciones },
     { data: participantes },
     { data: empleados },
+    { data: asignaciones },
   ] = await Promise.all([
     supabase.from("empresas").select("*").order("nombre"),
     supabase.from("indicadores_financieros").select("*"),
     supabase.from("licitaciones").select("*"),
     supabase.from("licitacion_participantes").select("empresa_id, licitacion_id"),
     supabase.from("empleados").select("*"),
+    supabase.from("asignaciones_personal").select("*"),
   ]);
 
   return {
@@ -42,6 +45,7 @@ async function getDatos() {
     licitaciones: (licitaciones ?? []) as Licitacion[],
     participantes: (participantes ?? []) as { empresa_id: string; licitacion_id: string }[],
     empleados: (empleados ?? []) as Empleado[],
+    asignaciones: (asignaciones ?? []) as AsignacionPersonal[],
   };
 }
 
@@ -112,7 +116,7 @@ function StatTile({
 }
 
 export default async function ReportesPage() {
-  const { empresas, indicadores, licitaciones, participantes, empleados } = await getDatos();
+  const { empresas, indicadores, licitaciones, participantes, empleados, asignaciones } = await getDatos();
 
   const ultimoIndicador = ultimoIndicadorPorEmpresa(indicadores);
   const empresasConAlertaCritica = empresas.filter((e) =>
@@ -148,6 +152,20 @@ export default async function ReportesPage() {
         (conteoParticipacionPorEmpresa.get(b.id)?.activas ?? 0) -
         (conteoParticipacionPorEmpresa.get(a.id)?.activas ?? 0),
     );
+
+  const empleadosPorId = new Map(empleados.map((e) => [e.id, e]));
+  const dedicacionActivaPorEmpleado = new Map<string, number>();
+  for (const a of asignaciones) {
+    if (a.fecha_fin || a.dedicacion_pct == null) continue;
+    dedicacionActivaPorEmpleado.set(
+      a.empleado_id,
+      (dedicacionActivaPorEmpleado.get(a.empleado_id) ?? 0) + a.dedicacion_pct,
+    );
+  }
+  const sobreAsignados = [...dedicacionActivaPorEmpleado.entries()]
+    .filter(([, pct]) => pct > 100)
+    .map(([empleadoId, pct]) => ({ empleado: empleadosPorId.get(empleadoId), pct }))
+    .filter((s): s is { empleado: Empleado; pct: number } => s.empleado != null);
 
   const empleadosActivos = empleados.filter((e) => !e.fecha_salida);
   const hoy = new Date();
@@ -193,6 +211,12 @@ export default async function ReportesPage() {
           label="Contratos por vencer (30 días)"
           value={String(contratosPorVencer.length)}
           tono={contratosPorVencer.length > 0 ? "critico" : "bien"}
+        />
+        <StatTile
+          icon={<AlertTriangle size={18} />}
+          label="Personal sobre-asignado (>100% dedicación)"
+          value={String(sobreAsignados.length)}
+          tono={sobreAsignados.length > 0 ? "critico" : "bien"}
         />
       </div>
 
@@ -397,6 +421,24 @@ export default async function ReportesPage() {
               {contratosPorVencer.map((emp) => (
                 <li key={emp.id}>
                   {emp.nombre} — {emp.cargo ?? "sin cargo"} — vence {emp.fecha_salida}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {sobreAsignados.length > 0 && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+            <p className="mb-2 text-sm font-medium text-red-800">
+              {sobreAsignados.length} persona(s) con dedicación combinada superior a 100% entre proyectos activos
+            </p>
+            <ul className="flex flex-col gap-1 text-sm text-red-700">
+              {sobreAsignados.map(({ empleado, pct }) => (
+                <li key={empleado.id}>
+                  <Link href={`/empresas/${empleado.empresa_id}`} className="underline hover:no-underline">
+                    {empleado.nombre}
+                  </Link>{" "}
+                  — {empleado.cargo ?? "sin cargo"} — {pct}% dedicación combinada
                 </li>
               ))}
             </ul>

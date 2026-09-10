@@ -221,6 +221,21 @@ export interface Empleado {
   updated_at: string;
 }
 
+export interface AsignacionPersonal {
+  id: string;
+  empleado_id: string;
+  licitacion_id: string | null;
+  proyecto: string;
+  rol: string | null;
+  dedicacion_pct: number | null;
+  contratado_por: string | null;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+  notas: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface IndicadorFinanciero {
   id: string;
   empresa_id: string;
