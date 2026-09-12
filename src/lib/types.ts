@@ -186,6 +186,52 @@ export interface Empresa {
   notas: string | null;
   registra_obras_inconclusas: boolean | null;
   es_empresa_mujeres: boolean | null;
+  participa_licitaciones: boolean;
+  ejecuta_obra: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TipoContrato =
+  | "termino_fijo"
+  | "termino_indefinido"
+  | "obra_labor"
+  | "prestacion_servicios"
+  | "aprendizaje";
+
+export const TIPO_CONTRATO_LABELS: Record<TipoContrato, string> = {
+  termino_fijo: "Término fijo",
+  termino_indefinido: "Término indefinido",
+  obra_labor: "Obra o labor",
+  prestacion_servicios: "Prestación de servicios",
+  aprendizaje: "Contrato de aprendizaje",
+};
+
+export interface Empleado {
+  id: string;
+  empresa_id: string;
+  nombre: string;
+  cargo: string | null;
+  tipo_contrato: TipoContrato;
+  salario: number | null;
+  fecha_ingreso: string | null;
+  fecha_salida: string | null;
+  notas: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AsignacionPersonal {
+  id: string;
+  empleado_id: string;
+  licitacion_id: string | null;
+  proyecto: string;
+  rol: string | null;
+  dedicacion_pct: number | null;
+  contratado_por: string | null;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+  notas: string | null;
   created_at: string;
   updated_at: string;
 }

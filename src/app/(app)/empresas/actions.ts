@@ -16,6 +16,8 @@ export async function crearEmpresa(formData: FormData) {
       nombre,
       nit: String(formData.get("nit") ?? "").trim() || null,
       notas: String(formData.get("notas") ?? "").trim() || null,
+      participa_licitaciones: formData.get("participa_licitaciones") === "on",
+      ejecuta_obra: formData.get("ejecuta_obra") === "on",
     })
     .select("id")
     .single();
@@ -85,6 +87,17 @@ export async function actualizarCriteriosEmpresa(
   revalidatePath(`/empresas/${empresaId}`);
 }
 
+export async function actualizarRolEmpresa(
+  empresaId: string,
+  rol: { participa_licitaciones: boolean; ejecuta_obra: boolean },
+) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("empresas").update(rol).eq("id", empresaId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/empresas/${empresaId}`);
+  revalidatePath("/empresas");
+}
+
 export async function eliminarIndicadores(empresaId: string, id: string) {
   const supabase = createAdminClient();
   const { error } = await supabase.from("indicadores_financieros").delete().eq("id", id);
@@ -133,4 +146,77 @@ export async function eliminarExperiencia(empresaId: string, id: string) {
   const { error } = await supabase.from("experiencia").delete().eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath(`/empresas/${empresaId}`);
+}
+
+export async function crearEmpleado(empresaId: string, formData: FormData) {
+  const supabase = createAdminClient();
+
+  const nombre = String(formData.get("nombre") ?? "").trim();
+  if (!nombre) throw new Error("El nombre del empleado es obligatorio");
+
+  const num = (key: string) => {
+    const v = formData.get(key);
+    if (!v || String(v).trim() === "") return null;
+    return Number(v);
+  };
+
+  const { error } = await supabase.from("empleados").insert({
+    empresa_id: empresaId,
+    nombre,
+    cargo: String(formData.get("cargo") ?? "").trim() || null,
+    tipo_contrato: String(formData.get("tipo_contrato") ?? "termino_fijo"),
+    salario: num("salario"),
+    fecha_ingreso: String(formData.get("fecha_ingreso") ?? "") || null,
+    fecha_salida: String(formData.get("fecha_salida") ?? "") || null,
+    notas: String(formData.get("notas") ?? "").trim() || null,
+  });
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/empresas/${empresaId}`);
+  revalidatePath("/reportes");
+}
+
+export async function eliminarEmpleado(empresaId: string, id: string) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("empleados").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/empresas/${empresaId}`);
+  revalidatePath("/reportes");
+}
+
+export async function crearAsignacion(empresaId: string, empleadoId: string, formData: FormData) {
+  const supabase = createAdminClient();
+
+  const proyecto = String(formData.get("proyecto") ?? "").trim();
+  if (!proyecto) throw new Error("El proyecto/obra es obligatorio");
+
+  const num = (key: string) => {
+    const v = formData.get(key);
+    if (!v || String(v).trim() === "") return null;
+    return Number(v);
+  };
+
+  const { error } = await supabase.from("asignaciones_personal").insert({
+    empleado_id: empleadoId,
+    licitacion_id: String(formData.get("licitacion_id") ?? "").trim() || null,
+    proyecto,
+    rol: String(formData.get("rol") ?? "").trim() || null,
+    dedicacion_pct: num("dedicacion_pct"),
+    contratado_por: String(formData.get("contratado_por") ?? "").trim() || null,
+    fecha_inicio: String(formData.get("fecha_inicio") ?? "") || null,
+    fecha_fin: String(formData.get("fecha_fin") ?? "") || null,
+    notas: String(formData.get("notas") ?? "").trim() || null,
+  });
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/empresas/${empresaId}`);
+  revalidatePath("/reportes");
+}
+
+export async function eliminarAsignacion(empresaId: string, id: string) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("asignaciones_personal").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/empresas/${empresaId}`);
+  revalidatePath("/reportes");
 }

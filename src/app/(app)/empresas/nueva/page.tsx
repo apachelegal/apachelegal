@@ -55,6 +55,26 @@ export default function NuevaEmpresaPage() {
           />
         </div>
 
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium text-slate-700">Rol en el grupo</span>
+          <p className="text-xs text-slate-400">
+            No son excluyentes: una empresa puede licitar y también ejecutar la obra.
+          </p>
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              name="participa_licitaciones"
+              defaultChecked
+              className="rounded border-slate-300"
+            />
+            Participa en licitaciones (proponente / consorciada)
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <input type="checkbox" name="ejecuta_obra" className="rounded border-slate-300" />
+            Ejecuta obra (operativa en el sitio de la obra)
+          </label>
+        </div>
+
         <div className="mt-2 flex justify-end gap-3">
           <Link
             href="/empresas"

@@ -36,8 +36,27 @@ async function getEmpresas() {
   }));
 }
 
-export default async function EmpresasPage() {
-  const empresas = await getEmpresas();
+type RolFiltro = "todas" | "licitantes" | "ejecutoras";
+
+const FILTROS: { valor: RolFiltro; label: string }[] = [
+  { valor: "todas", label: "Todas" },
+  { valor: "licitantes", label: "Licitantes" },
+  { valor: "ejecutoras", label: "Ejecutoras de obra" },
+];
+
+export default async function EmpresasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ rol?: string }>;
+}) {
+  const { rol } = await searchParams;
+  const filtro: RolFiltro = rol === "licitantes" || rol === "ejecutoras" ? rol : "todas";
+
+  const empresas = (await getEmpresas()).filter((e) => {
+    if (filtro === "licitantes") return e.participa_licitaciones;
+    if (filtro === "ejecutoras") return e.ejecuta_obra;
+    return true;
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,6 +74,22 @@ export default async function EmpresasPage() {
           <Plus size={16} />
           Nueva empresa
         </Link>
+      </div>
+
+      <div className="flex gap-2">
+        {FILTROS.map((f) => (
+          <Link
+            key={f.valor}
+            href={f.valor === "todas" ? "/empresas" : `/empresas?rol=${f.valor}`}
+            className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+              filtro === f.valor
+                ? "bg-blue-600 text-white"
+                : "bg-white text-slate-600 border border-slate-200 hover:border-blue-300"
+            }`}
+          >
+            {f.label}
+          </Link>
+        ))}
       </div>
 
       {empresas.length === 0 ? (
@@ -77,6 +112,18 @@ export default async function EmpresasPage() {
                   <p className="truncate font-medium text-slate-900">{e.nombre}</p>
                   {e.nit && <p className="text-xs text-slate-400">NIT {e.nit}</p>}
                 </div>
+              </div>
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {e.participa_licitaciones && (
+                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+                    Licitante
+                  </span>
+                )}
+                {e.ejecuta_obra && (
+                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                    Ejecutora de obra
+                  </span>
+                )}
               </div>
               <div className="flex items-center justify-between text-xs text-slate-500">
                 <span>{e.experienciaCount} contratos de experiencia</span>
