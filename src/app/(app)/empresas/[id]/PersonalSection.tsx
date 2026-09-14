@@ -1,8 +1,8 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { ChevronDown, ChevronUp, Loader2, Plus, Trash2, Users } from "lucide-react";
-import { crearEmpleado, eliminarEmpleado } from "../actions";
+import { ChevronDown, ChevronUp, Loader2, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { actualizarEmpleado, crearEmpleado, eliminarEmpleado } from "../actions";
 import { TIPO_CONTRATO_LABELS, type AsignacionPersonal, type Empleado } from "@/lib/types";
 import { formatCOP, formatDate } from "@/lib/format";
 import { AsignacionesPanel } from "./AsignacionesPanel";
@@ -22,6 +22,7 @@ export function PersonalSection({
   const [error, setError] = useState<string | null>(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [expandido, setExpandido] = useState<string | null>(null);
+  const [editando, setEditando] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   function handleCrear(formData: FormData) {
@@ -33,6 +34,18 @@ export function PersonalSection({
         setMostrarFormulario(false);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Error al crear el registro");
+      }
+    });
+  }
+
+  function handleActualizar(empleadoId: string, formData: FormData) {
+    setError(null);
+    startTransition(async () => {
+      try {
+        await actualizarEmpleado(empresaId, empleadoId, formData);
+        setEditando(null);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Error al actualizar el empleado");
       }
     });
   }
@@ -118,52 +131,111 @@ export function PersonalSection({
           {ordenados.map((emp) => {
             const asignaciones = asignacionesPorEmpleado[emp.id] ?? [];
             const abierto = expandido === emp.id;
+            const editandoEste = editando === emp.id;
             return (
               <li key={emp.id} className="py-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-slate-800">{emp.nombre}</p>
-                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
-                        {TIPO_CONTRATO_LABELS[emp.tipo_contrato]}
-                      </span>
-                      {emp.fecha_salida && (
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                          Inactivo
-                        </span>
-                      )}
+                {editandoEste ? (
+                  <form
+                    action={(fd) => handleActualizar(emp.id, fd)}
+                    className="flex flex-col gap-3 rounded-lg border border-dashed border-blue-300 bg-blue-50/40 p-4"
+                  >
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <Field label="Nombre" name="nombre" required defaultValue={emp.nombre} />
+                      <Field label="Cargo" name="cargo" defaultValue={emp.cargo ?? ""} />
                     </div>
-                    {emp.cargo && <p className="mt-0.5 text-sm text-slate-600">{emp.cargo}</p>}
-                    <p className="mt-1 text-xs text-slate-400">
-                      {formatDate(emp.fecha_ingreso)} –{" "}
-                      {emp.fecha_salida ? formatDate(emp.fecha_salida) : "actualidad"}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <p className="text-right text-sm font-medium text-slate-800">{formatCOP(emp.salario)}</p>
-                    <button
-                      onClick={() => setExpandido(abierto ? null : emp.id)}
-                      className="rounded-lg px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
-                    >
-                      Asignaciones ({asignaciones.length})
-                    </button>
-                    <button
-                      onClick={() => handleEliminar(emp)}
-                      disabled={isPending}
-                      className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                      aria-label="Eliminar"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-                {abierto && (
-                  <AsignacionesPanel
-                    empresaId={empresaId}
-                    empleadoId={emp.id}
-                    asignaciones={asignaciones}
-                    licitaciones={licitaciones}
-                  />
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-slate-600">Tipo de contrato</label>
+                        <select
+                          name="tipo_contrato"
+                          defaultValue={emp.tipo_contrato}
+                          className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+                        >
+                          {Object.entries(TIPO_CONTRATO_LABELS).map(([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <Field label="Salario (COP)" name="salario" type="number" defaultValue={emp.salario ?? ""} />
+                      <Field label="Fecha de ingreso" name="fecha_ingreso" type="date" defaultValue={emp.fecha_ingreso ?? ""} />
+                      <Field label="Fecha de salida" name="fecha_salida" type="date" defaultValue={emp.fecha_salida ?? ""} />
+                    </div>
+                    <Field label="Notas" name="notas" as="textarea" defaultValue={emp.notas ?? ""} />
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={isPending}
+                        className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {isPending ? <Loader2 size={16} className="animate-spin" /> : null}
+                        Guardar cambios
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditando(null)}
+                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium text-slate-800">{emp.nombre}</p>
+                          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
+                            {TIPO_CONTRATO_LABELS[emp.tipo_contrato]}
+                          </span>
+                          {emp.fecha_salida && (
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                              Inactivo
+                            </span>
+                          )}
+                        </div>
+                        {emp.cargo && <p className="mt-0.5 text-sm text-slate-600">{emp.cargo}</p>}
+                        <p className="mt-1 text-xs text-slate-400">
+                          {formatDate(emp.fecha_ingreso)} –{" "}
+                          {emp.fecha_salida ? formatDate(emp.fecha_salida) : "actualidad"}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3">
+                        <p className="text-right text-sm font-medium text-slate-800">{formatCOP(emp.salario)}</p>
+                        <button
+                          onClick={() => setExpandido(abierto ? null : emp.id)}
+                          className="rounded-lg px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                        >
+                          Asignaciones ({asignaciones.length})
+                        </button>
+                        <button
+                          onClick={() => setEditando(emp.id)}
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
+                          aria-label="Editar"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleEliminar(emp)}
+                          disabled={isPending}
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                          aria-label="Eliminar"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                    {abierto && (
+                      <AsignacionesPanel
+                        empresaId={empresaId}
+                        empleadoId={emp.id}
+                        asignaciones={asignaciones}
+                        licitaciones={licitaciones}
+                      />
+                    )}
+                  </>
                 )}
               </li>
             );
@@ -180,12 +252,14 @@ function Field({
   type = "text",
   required,
   as,
+  defaultValue,
 }: {
   label: string;
   name: string;
   type?: string;
   required?: boolean;
   as?: "textarea";
+  defaultValue?: string | number;
 }) {
   return (
     <div className="flex flex-col gap-1">
@@ -195,6 +269,7 @@ function Field({
           name={name}
           required={required}
           rows={2}
+          defaultValue={defaultValue}
           className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
         />
       ) : (
@@ -202,6 +277,7 @@ function Field({
           name={name}
           type={type}
           required={required}
+          defaultValue={defaultValue}
           className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
         />
       )}
