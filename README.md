@@ -6,6 +6,7 @@ Aplicación interna para gestionar procesos de licitación pública en Colombia:
 
 ## Módulos
 
+- **Procesos** — seguimiento de casos y controversias contractuales: ficha del caso (partes, contrato, etapa: arreglo directo, conciliación, arbitraje), plan de acciones con responsable, fecha límite, estado y soporte (marca vencidas), cronología de hechos, matriz probatoria y documentos del caso.
 - **Licitaciones** — ficha por proceso (entidad, objeto, presupuesto, fechas, estado), documentos, participantes y notas.
 - **Análisis IA del pliego** — sube el pliego y sus anexos en PDF; la IA extrae resumen, requisitos jurídicos/financieros/técnicos, anexos exigidos y fechas clave. Si la licitación está vinculada a una entidad con manual de contratación cargado, ese manual se incluye automáticamente como contexto.
 - **Verificación de cumplimiento** — compara los requisitos extraídos del pliego contra los datos reales de la(s) empresa(s) participantes (incluye consorcios/uniones temporales con % de participación) y da un veredicto por requisito: cumple, no cumple, parcial o no determinable.
@@ -49,6 +50,8 @@ Abrir [http://localhost:3000](http://localhost:3000). La primera vez, el usuario
 ### Base de datos
 
 El esquema completo (tablas, índices, RLS, buckets de Storage) vive en [`supabase/schema.sql`](supabase/schema.sql), con migraciones incrementales agregadas al final del archivo a medida que crece la app. Ejecutar el contenido en el editor SQL de Supabase (no hay acceso `psql` automatizado desde este repo).
+
+El módulo Procesos tiene su propio archivo, [`supabase/procesos.sql`](supabase/procesos.sql), que se ejecuta después de `schema.sql` (es idempotente). [`supabase/seed_caso_coningma.sql`](supabase/seed_caso_coningma.sql) carga opcionalmente el primer caso con su plan de acciones.
 
 ### Comandos
 
