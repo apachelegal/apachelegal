@@ -1,5 +1,6 @@
 "use server";
 
+import { descargarTextoOcr, rutaTextoOcr } from "@/lib/ocr/textoOcr";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { TipoEmpresaDocumento } from "@/lib/types";
@@ -13,6 +14,8 @@ export async function uploadEmpresaDocumento(empresaId: string, formData: FormDa
   const supabase = createAdminClient();
   const file = formData.get("file") as File | null;
   const tipo = String(formData.get("tipo") ?? "otro") as TipoEmpresaDocumento;
+  const fechaExpedicion = String(formData.get("fecha_expedicion") ?? "") || null;
+  const fechaVencimiento = String(formData.get("fecha_vencimiento") ?? "") || null;
 
   if (!file || file.size === 0) throw new Error("Selecciona un archivo");
 
@@ -32,6 +35,8 @@ export async function uploadEmpresaDocumento(empresaId: string, formData: FormDa
     storage_path: storagePath,
     tamano_bytes: file.size,
     content_type: file.type,
+    fecha_expedicion: fechaExpedicion,
+    fecha_vencimiento: fechaVencimiento,
   });
 
   if (insertError) {
@@ -40,6 +45,26 @@ export async function uploadEmpresaDocumento(empresaId: string, formData: FormDa
   }
 
   revalidatePath(`/empresas/${empresaId}`);
+  revalidatePath("/habilitacion");
+}
+
+export async function actualizarEmpresaDocumento(
+  empresaId: string,
+  documentoId: string,
+  cambios: { tipo: TipoEmpresaDocumento; fechaExpedicion: string | null; fechaVencimiento: string | null },
+) {
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("empresa_documentos")
+    .update({
+      tipo: cambios.tipo,
+      fecha_expedicion: cambios.fechaExpedicion || null,
+      fecha_vencimiento: cambios.fechaVencimiento || null,
+    })
+    .eq("id", documentoId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/empresas/${empresaId}`);
+  revalidatePath("/habilitacion");
 }
 
 export async function eliminarEmpresaDocumento(empresaId: string, documentoId: string, storagePath: string) {
@@ -48,6 +73,7 @@ export async function eliminarEmpresaDocumento(empresaId: string, documentoId: s
   const { error } = await supabase.from("empresa_documentos").delete().eq("id", documentoId);
   if (error) throw new Error(error.message);
   revalidatePath(`/empresas/${empresaId}`);
+  revalidatePath("/habilitacion");
 }
 
 export async function getEmpresaDocumentoUrl(storagePath: string) {
@@ -56,6 +82,14 @@ export async function getEmpresaDocumentoUrl(storagePath: string) {
     .from("empresas")
     .createSignedUrl(storagePath, 60 * 5);
   if (error) throw new Error(error.message);
+  return data.signedUrl;
+}
+
+/** Enlace al texto leído por OCR de un certificado; falla si ese PDF no tiene texto leído. */
+export async function getTextoOcrUrl(storagePath: string) {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.storage.from("empresas").createSignedUrl(rutaTextoOcr(storagePath), 60 * 5);
+  if (error) throw new Error("Este certificado todavía no tiene texto leído (OCR).");
   return data.signedUrl;
 }
 
@@ -144,7 +178,7 @@ export async function extraerDetallesExperienciaAction(
         throw new Error(`No se pudo descargar "${doc.nombre}": ${error?.message ?? "error desconocido"}`);
       }
       const base64 = Buffer.from(await blob.arrayBuffer()).toString("base64");
-      return { nombre: doc.nombre as string, base64 };
+      return { nombre: doc.nombre as string, base64, textoOcr: await descargarTextoOcr(supabase, doc.storage_path as string) };
     }),
   );
 

@@ -14,19 +14,25 @@ import type {
 } from "@/lib/types";
 import { IndicadoresSection } from "./IndicadoresSection";
 import { ExperienciaSection } from "./ExperienciaSection";
-import { EmpresaDocumentosSection } from "./EmpresaDocumentosSection";
+import { CarpetaHabilitacionSection } from "./CarpetaHabilitacionSection";
+import { evaluarCarpeta, normalizarCierre } from "@/lib/habilitacion/checklist";
 import { DatosJuridicosSection } from "./DatosJuridicosSection";
 import { CriteriosPuntajeSection } from "./CriteriosPuntajeSection";
 import { RolEmpresaSection } from "./RolEmpresaSection";
 import { PersonalSection } from "./PersonalSection";
 import { DeleteEmpresaButton } from "./DeleteEmpresaButton";
+import { CategoriaSelector } from "./CategoriaSelector";
+import { ArchivarEmpresaButton } from "./ArchivarEmpresaButton";
 
 export default async function EmpresaDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ cierre?: string }>;
 }) {
   const { id } = await params;
+  const { cierre } = await searchParams;
   const supabase = createAdminClient();
 
   const [
@@ -72,20 +78,42 @@ export default async function EmpresaDetailPage({
     (asignacionesPorEmpleado[a.empleado_id] ??= []).push(a);
   }
 
+  const estadoCarpeta = evaluarCarpeta(
+    emp,
+    (empresaDocumentos ?? []) as EmpresaDocumento[],
+    (experiencia ?? []) as Experiencia[],
+    new Set(Object.keys(documentosPorExperiencia)),
+    normalizarCierre(cierre),
+  );
+
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
-      <Link href="/empresas" className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
+      <Link
+        href={emp.archivada ? "/empresas/archivadas" : "/empresas"}
+        className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"
+      >
         <ArrowLeft size={16} />
-        Volver a empresas
+        {emp.archivada ? "Volver a empresas archivadas" : "Volver a empresas"}
       </Link>
 
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{emp.nombre}</h1>
+          <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold text-slate-900">
+            {emp.nombre}
+            {emp.archivada && (
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">Archivada</span>
+            )}
+          </h1>
           {emp.nit && <p className="text-slate-500">NIT {emp.nit}</p>}
           {emp.notas && <p className="mt-1 text-sm text-slate-400">{emp.notas}</p>}
+          <div className="mt-2">
+            <CategoriaSelector empresaId={emp.id} categoria={emp.categoria} />
+          </div>
         </div>
-        <DeleteEmpresaButton id={emp.id} />
+        <div className="flex items-start gap-2">
+          <ArchivarEmpresaButton id={emp.id} archivada={!!emp.archivada} />
+          <DeleteEmpresaButton id={emp.id} />
+        </div>
       </div>
 
       <RolEmpresaSection
@@ -100,9 +128,10 @@ export default async function EmpresaDetailPage({
         esEmpresaMujeres={emp.es_empresa_mujeres}
       />
 
-      <EmpresaDocumentosSection
+      <CarpetaHabilitacionSection
         empresaId={emp.id}
-        documentos={(empresaDocumentos ?? []) as EmpresaDocumento[]}
+        tipoPersona={emp.tipo_persona ?? "juridica"}
+        estado={estadoCarpeta}
       />
 
       <DatosJuridicosSection

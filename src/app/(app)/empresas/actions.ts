@@ -10,6 +10,8 @@ export async function crearEmpresa(formData: FormData) {
   const nombre = String(formData.get("nombre") ?? "").trim();
   if (!nombre) throw new Error("El nombre de la empresa es obligatorio");
 
+  const categoria = String(formData.get("categoria") ?? "grupo").trim();
+
   const { data, error } = await supabase
     .from("empresas")
     .insert({
@@ -18,6 +20,7 @@ export async function crearEmpresa(formData: FormData) {
       notas: String(formData.get("notas") ?? "").trim() || null,
       participa_licitaciones: formData.get("participa_licitaciones") === "on",
       ejecuta_obra: formData.get("ejecuta_obra") === "on",
+      categoria: categoria === "socio_potencial" ? "socio_potencial" : "grupo",
     })
     .select("id")
     .single();
@@ -25,7 +28,35 @@ export async function crearEmpresa(formData: FormData) {
   if (error) throw new Error(error.message);
 
   revalidatePath("/empresas");
+  revalidatePath("/empresas/socios");
   redirect(`/empresas/${data.id}`);
+}
+
+export async function actualizarCategoriaEmpresa(empresaId: string, categoria: "grupo" | "socio_potencial") {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("empresas").update({ categoria }).eq("id", empresaId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/empresas");
+  revalidatePath("/empresas/socios");
+  revalidatePath(`/empresas/${empresaId}`);
+}
+
+/** Archiva o restaura una empresa: deja de aparecer en listas y recomendaciones, pero conserva todos sus datos. */
+export async function archivarEmpresa(empresaId: string, archivada: boolean) {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("empresas").update({ archivada }).eq("id", empresaId);
+  if (error) {
+    if (/archivada/i.test(error.message)) {
+      throw new Error(
+        "Falta aplicar la migración de empresas archivadas en la base de datos (final de supabase/schema.sql).",
+      );
+    }
+    throw new Error(error.message);
+  }
+  for (const ruta of ["/", "/empresas", "/empresas/socios", "/empresas/archivadas", "/habilitacion", `/empresas/${empresaId}`]) {
+    revalidatePath(ruta);
+  }
+  if (archivada) redirect("/empresas/archivadas");
 }
 
 export async function eliminarEmpresa(id: string) {

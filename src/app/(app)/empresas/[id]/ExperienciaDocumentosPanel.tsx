@@ -6,6 +6,7 @@ import {
   uploadExperienciaDocumento,
   eliminarExperienciaDocumento,
   getEmpresaDocumentoUrl,
+  getTextoOcrUrl,
   extraerDetallesExperienciaAction,
   guardarDetallesExperiencia,
   verificarTitularExperienciaAction,
@@ -93,6 +94,15 @@ export function ExperienciaDocumentosPanel({
       setError(e instanceof Error ? e.message : "Error al generar el enlace de descarga");
     } finally {
       setDownloadingId(null);
+    }
+  }
+
+  async function handleTextoOcr(doc: ExperienciaDocumento) {
+    setError(null);
+    try {
+      window.open(await getTextoOcrUrl(doc.storage_path), "_blank");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo abrir el texto leído");
     }
   }
 
@@ -192,6 +202,13 @@ export function ExperienciaDocumentosPanel({
                 <span className="shrink-0 text-slate-400">({formatBytes(doc.tamano_bytes)})</span>
               </span>
               <span className="flex shrink-0 items-center gap-1">
+                <button
+                  onClick={() => handleTextoOcr(doc)}
+                  className="rounded p-1 text-[10px] font-medium text-slate-400 hover:bg-slate-200 hover:text-blue-600"
+                  title="Texto leído por OCR (solo en PDF escaneados ya procesados)"
+                >
+                  Texto
+                </button>
                 <button
                   onClick={() => handleDownload(doc)}
                   disabled={downloadingId === doc.id}

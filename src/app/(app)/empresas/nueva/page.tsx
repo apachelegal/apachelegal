@@ -2,7 +2,14 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { crearEmpresa } from "../actions";
 
-export default function NuevaEmpresaPage() {
+export default async function NuevaEmpresaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ categoria?: string }>;
+}) {
+  const { categoria } = await searchParams;
+  const categoriaInicial = categoria === "socio_potencial" ? "socio_potencial" : "grupo";
+
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6">
       <Link href="/empresas" className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700">
@@ -41,6 +48,20 @@ export default function NuevaEmpresaPage() {
             placeholder="900.000.000-0"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
           />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="categoria" className="text-sm font-medium text-slate-700">
+            Categoría
+          </label>
+          <select
+            id="categoria"
+            name="categoria"
+            defaultValue={categoriaInicial}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          >
+            <option value="grupo">Empresa del grupo</option>
+            <option value="socio_potencial">Posible socio de consorcio</option>
+          </select>
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="notas" className="text-sm font-medium text-slate-700">

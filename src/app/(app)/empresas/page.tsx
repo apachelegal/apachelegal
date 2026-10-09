@@ -1,40 +1,7 @@
 import Link from "next/link";
-import { Plus, Building2 } from "lucide-react";
-import { createAdminClient } from "@/lib/supabase/admin";
-import type { Empresa } from "@/lib/types";
-
-async function getEmpresas() {
-  const supabase = createAdminClient();
-
-  const { data: empresas, error } = await supabase
-    .from("empresas")
-    .select("*")
-    .order("nombre");
-
-  if (error || !empresas) return [];
-
-  const { data: experiencia } = await supabase.from("experiencia").select("empresa_id");
-  const { data: indicadores } = await supabase
-    .from("indicadores_financieros")
-    .select("empresa_id, periodo")
-    .order("periodo", { ascending: false });
-
-  const conteoExperiencia = new Map<string, number>();
-  for (const e of experiencia ?? []) {
-    conteoExperiencia.set(e.empresa_id, (conteoExperiencia.get(e.empresa_id) ?? 0) + 1);
-  }
-
-  const ultimoPeriodo = new Map<string, string>();
-  for (const i of indicadores ?? []) {
-    if (!ultimoPeriodo.has(i.empresa_id)) ultimoPeriodo.set(i.empresa_id, i.periodo);
-  }
-
-  return (empresas as Empresa[]).map((e) => ({
-    ...e,
-    experienciaCount: conteoExperiencia.get(e.id) ?? 0,
-    ultimoPeriodo: ultimoPeriodo.get(e.id) ?? null,
-  }));
-}
+import { Archive, Plus, Users } from "lucide-react";
+import { getEmpresasConResumen } from "@/lib/getEmpresasConResumen";
+import { EmpresasGrid } from "@/components/empresas/EmpresasGrid";
 
 type RolFiltro = "todas" | "licitantes" | "ejecutoras";
 
@@ -52,28 +19,49 @@ export default async function EmpresasPage({
   const { rol } = await searchParams;
   const filtro: RolFiltro = rol === "licitantes" || rol === "ejecutoras" ? rol : "todas";
 
-  const empresas = (await getEmpresas()).filter((e) => {
+  const todas = await getEmpresasConResumen();
+  const delGrupo = todas.filter((e) => e.categoria === "grupo" && !e.archivada);
+  const empresas = delGrupo.filter((e) => {
     if (filtro === "licitantes") return e.participa_licitaciones;
     if (filtro === "ejecutoras") return e.ejecuta_obra;
     return true;
   });
+  const archivadas = todas.filter((e) => e.archivada).length;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Empresas</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">Empresas del grupo</h1>
           <p className="text-slate-500">
-            Perfiles de empresa para verificar cumplimiento de requisitos en licitaciones.
+            Perfiles de empresa propias para verificar cumplimiento de requisitos en licitaciones.
           </p>
         </div>
-        <Link
-          href="/empresas/nueva"
-          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          <Plus size={16} />
-          Nueva empresa
-        </Link>
+        <div className="flex items-center gap-3">
+          {archivadas > 0 && (
+            <Link
+              href="/empresas/archivadas"
+              className="flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            >
+              <Archive size={16} />
+              Archivadas ({archivadas})
+            </Link>
+          )}
+          <Link
+            href="/empresas/socios"
+            className="flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          >
+            <Users size={16} />
+            Posibles socios
+          </Link>
+          <Link
+            href="/empresas/nueva"
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            <Plus size={16} />
+            Nueva empresa
+          </Link>
+        </div>
       </div>
 
       <div className="flex gap-2">
@@ -92,51 +80,7 @@ export default async function EmpresasPage({
         ))}
       </div>
 
-      {empresas.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-400">
-          No hay empresas registradas todavía.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {empresas.map((e) => (
-            <Link
-              key={e.id}
-              href={`/empresas/${e.id}`}
-              className="rounded-xl border border-slate-200 bg-white p-5 hover:border-blue-300 hover:shadow-sm"
-            >
-              <div className="mb-3 flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                  <Building2 size={18} />
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-slate-900">{e.nombre}</p>
-                  {e.nit && <p className="text-xs text-slate-400">NIT {e.nit}</p>}
-                </div>
-              </div>
-              <div className="mb-3 flex flex-wrap gap-1.5">
-                {e.participa_licitaciones && (
-                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
-                    Licitante
-                  </span>
-                )}
-                {e.ejecuta_obra && (
-                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
-                    Ejecutora de obra
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span>{e.experienciaCount} contratos de experiencia</span>
-                <span>
-                  {e.ultimoPeriodo
-                    ? `Indicadores ${e.ultimoPeriodo}`
-                    : "Sin indicadores financieros"}
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+      <EmpresasGrid empresas={empresas} emptyLabel="No hay empresas del grupo registradas todavía." />
     </div>
   );
 }
