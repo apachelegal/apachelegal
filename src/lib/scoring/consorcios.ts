@@ -1,6 +1,6 @@
 import type { RequisitosFinancierosEstructurado, RequisitosTecnicosEstructurado } from "@/lib/types";
 import { scoreRequisitosFinancierosPorAnio } from "./financiero";
-import { evaluarExperienciaEmpresa } from "./tecnico";
+import { evaluarExperienciaEmpresa, evaluarExperienciaGrupo } from "./tecnico";
 import type {
   EmpresaScoringInput,
   GrupoConsorcioSugerido,
@@ -104,7 +104,11 @@ export function asignarParticipacionFactible(
   const n = grupo.length;
   const nombres = grupo.map((e) => e.nombre);
 
-  const resultadosTecnicos = grupo.map((e) => evaluarExperienciaEmpresa(e.experiencia, requisitosTecnicos, hoy));
+  const resultadosTecnicos = evaluarExperienciaGrupo(
+    grupo.map((e) => e.experiencia),
+    requisitosTecnicos,
+    hoy,
+  );
   const valoresPropios = resultadosTecnicos.map((r) => r.valorSmmlvElegible);
 
   if (requisitosTecnicos.min_contratos_por_integrante) {

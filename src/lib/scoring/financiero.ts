@@ -164,18 +164,40 @@ export function puntuarIndicador(valor: number | null, regla: IndicadorFinancier
   return { nombre: regla.nombre, valor, puntos: tramo?.puntos ?? 0, tramo: tramo ?? null };
 }
 
+/**
+ * El pliego (num. 2.10) exige calificar a CADA integrante por separado contra las tablas de
+ * puntaje, y solo después ponderar la PUNTUACIÓN FINAL de cada uno por su % de participación
+ * ("...la evaluación se realizará a cada integrante... se ponderará la puntuación final de cada
+ * integrante de acuerdo con su porcentaje de participación"). Combinar primero las cifras
+ * contables base de varias empresas y calificar una sola vez el resultado combinado —como se
+ * hacía antes— produce un número distinto y no es lo que el pliego describe: equivale a evaluar
+ * una empresa ficticia con las cuentas mezcladas, no a promediar las calificaciones reales de
+ * cada integrante.
+ */
 export function scoreRequisitosFinancierosAnio(
   indicadoresPorEmpresa: { indicador: IndicadorFinancieroInput; pct: number }[],
   requisitos: RequisitosFinancierosEstructurado,
   periodo: string,
 ): ResultadoFinancieroAnio {
-  const base = combinarBaseContable(indicadoresPorEmpresa);
-  const detalle = requisitos.indicadores.map((regla) =>
-    puntuarIndicador(resolverValorIndicador(regla, base, indicadoresPorEmpresa), regla),
-  );
-  const puntajeTotal = detalle.reduce((sum, r) => sum + r.puntos, 0);
+  const porEmpresa = indicadoresPorEmpresa.map(({ indicador, pct }) => {
+    const solo = [{ indicador, pct: 100 }];
+    const base = combinarBaseContable(solo);
+    const detalle = requisitos.indicadores.map((regla) =>
+      puntuarIndicador(resolverValorIndicador(regla, base, solo), regla),
+    );
+    const puntajeTotal = detalle.reduce((sum, r) => sum + r.puntos, 0);
+    return { pct, puntajeTotal, detalle };
+  });
+
+  const puntajeTotal = porEmpresa.reduce((sum, e) => sum + e.puntajeTotal * (e.pct / 100), 0);
   const cumple = requisitos.puntaje_minimo_total == null || puntajeTotal >= requisitos.puntaje_minimo_total;
-  return { periodo, puntajeTotal, detalle, cumple };
+  return {
+    periodo,
+    puntajeTotal,
+    detalle: porEmpresa.length === 1 ? porEmpresa[0].detalle : [],
+    detallePorEmpresa: porEmpresa,
+    cumple,
+  };
 }
 
 /**

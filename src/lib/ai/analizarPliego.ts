@@ -88,7 +88,12 @@ const REQUISITOS_TECNICOS_ESTRUCTURADO_SCHEMA = {
       description: "Número máximo de integrantes que el pliego o el manual general permite en un consorcio/unión temporal, si lo limita explícitamente",
     },
     valor_minimo_acumulado_smmlv: { type: "number", description: "Valor mínimo exigido en SMMLV/SMLMV" },
-    ventana_recencia_anios: { type: "number", description: "Años hacia atrás dentro de los cuales deben estar iniciados y terminados los contratos" },
+    ventana_recencia_anios: { type: "number", description: "Años hacia atrás dentro de los cuales deben haber terminado los contratos (o haber iniciado y terminado, ver ventana_requiere_fecha_inicio)" },
+    ventana_requiere_fecha_inicio: {
+      type: "boolean",
+      description:
+        "true SOLO si el pliego exige explícitamente que el contrato haya sido EJECUTADO e INICIADO (no solo terminado) dentro de la ventana de recencia (ej. 'contratos ejecutados y terminados dentro de los últimos N años'). Si el pliego solo dice que los contratos deben haber 'terminado' o 'terminado y recibido a satisfacción' en los últimos N años (la redacción más común), omite este campo o pon false.",
+    },
     tratamiento_subcontratista: {
       type: "string",
       enum: ["excluye", "permite_con_reglas", "permite"],

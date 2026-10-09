@@ -88,18 +88,66 @@ export interface RequisitosFinancierosEstructurado {
   puntaje_minimo_total: number | null;
   modo_evaluacion: ModoEvaluacionIndicador;
   anios_evaluados: number | null;
+  /** true: en un plural el capital de trabajo es la suma de (AC − PC) de cada integrante, sin ponderar por participación (ICSM-1078 y 1244 de 2026). */
+  capital_trabajo_suma?: boolean;
   notas?: string;
 }
 
 export type TratamientoSubcontratista = "excluye" | "permite_con_reglas" | "permite";
 
+/** Un camino para acreditar una actividad: se suman las cantidades certificadas que cumplan los filtros. */
+export interface CriterioActividad {
+  /** Categoría de la extracción de certificados (tuberia_presion, camara_o_estructura_concreto, pavimento, reparacion_puntual, etc.). */
+  categoria: string;
+  unidad: "m" | "m3" | "m2" | "un";
+  minimo: number;
+  /** true cuando el pliego exige "mayor a" y no "mayor o igual a". */
+  estricto?: boolean;
+  diametro_min_pulgadas?: number;
+  metodo?: "sin_zanja" | "cielo_abierto";
+  metalica?: boolean;
+  /** Expresión regular (sin banderas) que debe cumplir la descripción de la actividad certificada. */
+  descripcion_regex?: string;
+}
+
+/** Actividad exigida por el pliego; se acredita por cualquiera de sus alternativas. */
+export interface ActividadRequerida {
+  numero: number;
+  descripcion: string;
+  alternativas: CriterioActividad[];
+}
+
+export interface ReglasPluralEaab {
+  participacion_mayor_min_pct: number;
+  participacion_otros_min_pct: number;
+  /** El integrante de mayor participación debe aportar como mínimo este % del valor de experiencia exigido. */
+  aporte_mayor_pct_valor: number;
+}
+
+export interface PonderablesProceso {
+  economica: number;
+  mujeres: number;
+  obras_inconclusas: number;
+  procesos_juridicos?: number;
+}
+
 export interface RequisitosTecnicosEstructurado {
+  actividades?: ActividadRequerida[];
+  reglas_plural?: ReglasPluralEaab;
+  ponderables?: PonderablesProceso;
   categorias_elegibles: string[];
   max_contratos: number | null;
   min_contratos_por_integrante: number | null;
   max_integrantes_forma_asociativa: number | null;
   valor_minimo_acumulado_smmlv: number | null;
   ventana_recencia_anios: number | null;
+  /**
+   * Si es true, el contrato debe tener fecha_inicio Y fecha_terminacion dentro de la ventana
+   * (ej. EPM: "ejecutados e terminados" dentro de los últimos N años). Si es false u omitido,
+   * solo se exige que fecha_terminacion esté dentro de la ventana (ej. EAAB, INVIAS: "terminados
+   * en los últimos N años"), que es la redacción más común en los pliegos colombianos.
+   */
+  ventana_requiere_fecha_inicio?: boolean;
   tratamiento_subcontratista: TratamientoSubcontratista;
   reglas_subcontratista?: string;
   permite_experiencia_accionista_empresa_nueva: boolean;
@@ -179,11 +227,19 @@ export interface ChecklistItem {
   updated_at: string;
 }
 
+export type CategoriaEmpresa = "grupo" | "socio_potencial";
+
+export type TipoPersona = "juridica" | "natural";
+
 export interface Empresa {
   id: string;
   nombre: string;
   nit: string | null;
   notas: string | null;
+  categoria: CategoriaEmpresa;
+  /** Oculta la empresa de las listas, el recomendador y la habilitación sin borrar nada; se puede restaurar. */
+  archivada?: boolean;
+  tipo_persona?: TipoPersona;
   registra_obras_inconclusas: boolean | null;
   es_empresa_mujeres: boolean | null;
   participa_licitaciones: boolean;
@@ -349,7 +405,17 @@ export const VEREDICTO_LABELS: Record<VeredictoCumplimiento, string> = {
   no_determinable: "No se puede determinar",
 };
 
-export type TipoEmpresaDocumento = "rup" | "camara_comercio" | "estados_financieros" | "otro";
+export type TipoEmpresaDocumento =
+  | "rup"
+  | "camara_comercio"
+  | "estados_financieros"
+  | "rut"
+  | "cedula_representante"
+  | "beneficiario_real"
+  | "parafiscales"
+  | "redam"
+  | "antecedentes"
+  | "otro";
 
 export interface EmpresaDocumento {
   id: string;
@@ -359,6 +425,8 @@ export interface EmpresaDocumento {
   storage_path: string;
   tamano_bytes: number | null;
   content_type: string | null;
+  fecha_expedicion?: string | null;
+  fecha_vencimiento?: string | null;
   created_at: string;
 }
 
@@ -366,6 +434,12 @@ export const TIPO_EMPRESA_DOCUMENTO_LABELS: Record<TipoEmpresaDocumento, string>
   rup: "RUP",
   camara_comercio: "Cámara de Comercio",
   estados_financieros: "Estados financieros",
+  rut: "RUT",
+  cedula_representante: "Documento de identidad del representante",
+  beneficiario_real: "Beneficiario real",
+  parafiscales: "Certificado de parafiscales",
+  redam: "Certificado REDAM",
+  antecedentes: "Certificados de antecedentes",
   otro: "Otro",
 };
 
@@ -438,4 +512,52 @@ export interface LicitacionExperienciaSeleccionada {
   actividad_acreditada: string | null;
   origen: "ia" | "manual";
   created_at: string;
+}
+
+export type SeccionPresupuesto = "obra" | "suministro" | "movilidad" | "otros";
+export type CoincidenciaSae = "exacta" | "similar" | "sin_referencia";
+
+export interface PresupuestoItem {
+  id: string;
+  licitacion_id: string;
+  orden: number;
+  seccion: SeccionPresupuesto;
+  capitulo: string | null;
+  capitulo_nombre: string | null;
+  codigo: string | null;
+  descripcion: string;
+  unidad: string | null;
+  cantidad: number | null;
+  precio_unitario: number | null;
+  total: number | null;
+  codigo_sae: string | null;
+  precio_sae: number | null;
+  unidad_sae: string | null;
+  coincidencia: CoincidenciaSae;
+  similitud: number | null;
+  costo_unitario?: number | null;
+  costo_fuente?: string | null;
+  costo_actualizado?: string | null;
+}
+
+export interface LineaResumenPresupuesto {
+  etiqueta: string;
+  valor: number;
+  porcentaje?: number;
+  /** Grupo visual: "obra" | "suministro" | "otros" | "total". */
+  grupo?: string;
+}
+
+export interface PresupuestoResumen {
+  licitacion_id: string;
+  fuente: string | null;
+  vigencia_precios: string | null;
+  resumen: {
+    lineas?: LineaResumenPresupuesto[];
+    vigencias?: { anio: number; valor: number }[];
+    total_oficial?: number;
+    notas?: string[];
+  };
+  supuestos?: Partial<import("@/lib/presupuesto/margen").Supuestos> | null;
+  updated_at: string;
 }

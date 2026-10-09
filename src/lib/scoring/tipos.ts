@@ -10,7 +10,10 @@ export interface ResultadoIndicador {
 export interface ResultadoFinancieroAnio {
   periodo: string;
   puntajeTotal: number;
+  /** Solo poblado cuando hay una única empresa (evaluación individual); en consorcio, ver `detallePorEmpresa`. */
   detalle: ResultadoIndicador[];
+  /** Puntaje y detalle propios de cada integrante antes de ponderar por % de participación. */
+  detallePorEmpresa?: { pct: number; puntajeTotal: number; detalle: ResultadoIndicador[] }[];
   cumple: boolean;
 }
 

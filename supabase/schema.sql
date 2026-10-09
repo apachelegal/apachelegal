@@ -597,3 +597,187 @@ create policy "authenticated update asignaciones_personal" on asignaciones_perso
   for update using (auth.role() = 'authenticated');
 create policy "authenticated delete asignaciones_personal" on asignaciones_personal
   for delete using (auth.role() = 'authenticated');
+
+-- Distingue empresas propias del grupo de posibles socios externos de consorcio.
+alter table empresas add column if not exists categoria text not null default 'grupo'
+  check (categoria in ('grupo', 'socio_potencial'));
+
+update empresas set categoria = 'socio_potencial'
+where id in (
+  '27891099-5896-4d32-ab1a-04d2717a29e3', -- AGAMA SAS
+  '010a2b88-0f96-4946-b4dc-1635124bb50f', -- Difusa
+  'fa823a0f-5d69-4297-8e2e-71179cc49f1f', -- Polo Asociados Soluciones de Ingeniería S.A.S.
+  'd2964d26-4671-4755-8a3d-58f4074dd336'  -- Petro-Ambiental SAS
+);
+
+-- Migración: carpeta de habilitación por empresa (jurídica / financiera / técnica).
+-- Amplía los tipos de documento de empresa a los que exige la EAAB (RUT, cédula del representante,
+-- beneficiario real, parafiscales, REDAM, antecedentes), agrega fechas de expedición y vencimiento
+-- para poder alertar qué vence antes de un cierre, y distingue persona natural de jurídica porque
+-- cambia la lista de documentos exigidos.
+do $$
+declare c text;
+begin
+  for c in
+    select conname from pg_constraint
+    where conrelid = 'empresa_documentos'::regclass and contype = 'c'
+      and pg_get_constraintdef(oid) ilike '%tipo%'
+  loop
+    execute format('alter table empresa_documentos drop constraint %I', c);
+  end loop;
+end $$;
+
+alter table empresa_documentos add constraint empresa_documentos_tipo_check
+  check (tipo in (
+    'rup', 'camara_comercio', 'estados_financieros', 'rut', 'cedula_representante',
+    'beneficiario_real', 'parafiscales', 'redam', 'antecedentes', 'otro'
+  ));
+
+alter table empresa_documentos add column if not exists fecha_expedicion date;
+alter table empresa_documentos add column if not exists fecha_vencimiento date;
+
+alter table empresas add column if not exists tipo_persona text not null default 'juridica'
+  check (tipo_persona in ('juridica', 'natural'));
+
+update empresas set tipo_persona = 'natural'
+where id in (
+  'fa88c05d-6954-4a35-8ec4-414aa48edb58', -- Diego Jaramillo Gómez
+  '47b866e1-2780-4454-9627-bdd17a92e228'  -- José Isaac Cajigas Castro
+);
+
+-- Migración: presupuesto oficial por licitación y catálogo de precios de referencia (SAI de la EAAB).
+-- El presupuesto de cada proyecto se guarda ítem por ítem y se compara contra el catálogo de precios
+-- de referencia de la entidad, para saber qué ítems tienen precio oficial de referencia, cuáles no
+-- (precios propios o no previstos) y dónde se concentra el valor.
+create table if not exists precios_referencia (
+  id uuid primary key default gen_random_uuid(),
+  entidad_id uuid not null references entidades_contratantes (id) on delete cascade,
+  catalogo text not null default 'SAI',
+  vigencia text not null,
+  codigo text not null,
+  nombre text not null,
+  unidad text,
+  precio numeric not null,
+  created_at timestamptz not null default now(),
+  unique (entidad_id, catalogo, vigencia, codigo)
+);
+create index if not exists precios_referencia_codigo_idx on precios_referencia (codigo);
+
+create table if not exists presupuesto_items (
+  id uuid primary key default gen_random_uuid(),
+  licitacion_id uuid not null references licitaciones (id) on delete cascade,
+  orden integer not null default 0,
+  seccion text not null default 'obra'
+    check (seccion in ('obra', 'suministro', 'movilidad', 'otros')),
+  capitulo text,
+  capitulo_nombre text,
+  codigo text,
+  descripcion text not null,
+  unidad text,
+  cantidad numeric,
+  precio_unitario numeric,
+  total numeric,
+  codigo_sae text,
+  precio_sae numeric,
+  unidad_sae text,
+  coincidencia text not null default 'sin_referencia'
+    check (coincidencia in ('exacta', 'similar', 'sin_referencia')),
+  similitud numeric,
+  created_at timestamptz not null default now()
+);
+create index if not exists presupuesto_items_licitacion_idx on presupuesto_items (licitacion_id, seccion, orden);
+
+create table if not exists presupuesto_resumen (
+  licitacion_id uuid primary key references licitaciones (id) on delete cascade,
+  fuente text,
+  vigencia_precios text,
+  resumen jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table precios_referencia enable row level security;
+alter table presupuesto_items enable row level security;
+alter table presupuesto_resumen enable row level security;
+
+create policy "authenticated read precios_referencia" on precios_referencia
+  for select using (auth.role() = 'authenticated');
+create policy "authenticated write precios_referencia" on precios_referencia
+  for insert with check (auth.role() = 'authenticated');
+create policy "authenticated delete precios_referencia" on precios_referencia
+  for delete using (auth.role() = 'authenticated');
+
+create policy "authenticated read presupuesto_items" on presupuesto_items
+  for select using (auth.role() = 'authenticated');
+create policy "authenticated write presupuesto_items" on presupuesto_items
+  for insert with check (auth.role() = 'authenticated');
+create policy "authenticated delete presupuesto_items" on presupuesto_items
+  for delete using (auth.role() = 'authenticated');
+
+create policy "authenticated read presupuesto_resumen" on presupuesto_resumen
+  for select using (auth.role() = 'authenticated');
+create policy "authenticated write presupuesto_resumen" on presupuesto_resumen
+  for insert with check (auth.role() = 'authenticated');
+create policy "authenticated update presupuesto_resumen" on presupuesto_resumen
+  for update using (auth.role() = 'authenticated');
+create policy "authenticated delete presupuesto_resumen" on presupuesto_resumen
+  for delete using (auth.role() = 'authenticated');
+
+-- Migración: análisis de margen y flujo de caja del presupuesto.
+-- Cada ítem puede llevar el costo real del constructor (cotización, subcontrato o estimación) para
+-- compararlo con el precio oficial, y cada presupuesto guarda los supuestos del análisis
+-- (porcentaje de oferta, AIU ofertado, costos indirectos, plazo, anticipo, retención, financiación).
+alter table presupuesto_items add column if not exists costo_unitario numeric;
+alter table presupuesto_items add column if not exists costo_fuente text;
+alter table presupuesto_items add column if not exists costo_actualizado timestamptz;
+alter table presupuesto_resumen add column if not exists supuestos jsonb not null default '{}'::jsonb;
+
+create policy "authenticated update presupuesto_items" on presupuesto_items
+  for update using (auth.role() = 'authenticated');
+
+-- Migración: empresas archivadas.
+-- Una empresa archivada deja de aparecer en las listas, la habilitación, el panel y el recomendador, pero
+-- conserva todos sus datos, documentos y experiencia (y sigue visible donde ya participa en una licitación).
+-- A diferencia de eliminarla, se puede restaurar. Conserva su categoría original (grupo / socio potencial).
+alter table empresas add column if not exists archivada boolean not null default false;
+
+-- Archiva las cinco empresas que salieron del grupo (6-oct-2026) y les devuelve su categoría original.
+update empresas set archivada = true, categoria = 'grupo'
+where id in (
+  'b7d6e320-8e78-423b-b311-e6d7637bfb73', -- CONINGMA SAS
+  '0230c968-cf3e-48b5-9f72-189a3074c06e', -- EPC SAS
+  '31039e6b-cd39-438d-bcd0-2a7a1e22cb69', -- I2C Ingeniería S.A.S
+  'ba321957-65e1-4afa-ad5a-3ff171f0a767', -- Quantum E&D SAS
+  '7f6580c7-5048-4893-acaa-44176c8abe6f'  -- Water Engineering Solutions SAS (WES)
+);
+
+-- Migración: control de solicitudes a socios.
+-- Registra qué se le pidió a cada empresa o persona natural (documentos de habilitación, certificados de
+-- contratos, cantidades de obra), cuándo se envió la solicitud y si ya respondieron. Las solicitudes que genera
+-- la app llevan una `clave` (doc:<tipo> o exp:<id>) para no duplicarse al volver a generarlas.
+create table if not exists solicitudes_socio (
+  id uuid primary key default gen_random_uuid(),
+  empresa_id uuid not null references empresas (id) on delete cascade,
+  tipo text not null default 'documento' check (tipo in ('documento', 'certificado', 'otro')),
+  clave text,
+  titulo text not null,
+  detalle text,
+  experiencia_id uuid references experiencia (id) on delete set null,
+  estado text not null default 'pendiente' check (estado in ('pendiente', 'enviada', 'recibida', 'no_aplica')),
+  fecha_envio date,
+  fecha_respuesta date,
+  notas text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (empresa_id, clave)
+);
+create index if not exists solicitudes_socio_empresa_idx on solicitudes_socio (empresa_id, estado);
+
+alter table solicitudes_socio enable row level security;
+create policy "authenticated read solicitudes_socio" on solicitudes_socio
+  for select using (auth.role() = 'authenticated');
+create policy "authenticated write solicitudes_socio" on solicitudes_socio
+  for insert with check (auth.role() = 'authenticated');
+create policy "authenticated update solicitudes_socio" on solicitudes_socio
+  for update using (auth.role() = 'authenticated');
+create policy "authenticated delete solicitudes_socio" on solicitudes_socio
+  for delete using (auth.role() = 'authenticated');
