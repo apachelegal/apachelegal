@@ -188,9 +188,17 @@ export default async function ReportesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Reportes</h1>
-        <p className="text-slate-500">Salud financiera, pipeline de licitaciones y planta de personal del grupo.</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Reportes</h1>
+          <p className="text-slate-500">Salud financiera, pipeline de licitaciones y planta de personal del grupo.</p>
+        </div>
+        <Link
+          href="/reportes/capacidad"
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+        >
+          Capacidad del grupo por tipo de proceso
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
