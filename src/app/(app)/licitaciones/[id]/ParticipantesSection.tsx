@@ -26,7 +26,8 @@ export function ParticipantesSection({
   const formRef = useRef<HTMLFormElement>(null);
 
   const empresasPorId = new Map(empresas.map((e) => [e.id, e]));
-  const disponibles = empresas.filter((e) => !participantes.some((p) => p.empresa_id === e.id));
+  // Las archivadas ya no se ofrecen para agregar, pero siguen apareciendo si ya son participantes.
+  const disponibles = empresas.filter((e) => !e.archivada && !participantes.some((p) => p.empresa_id === e.id));
   const totalPct = participantes.reduce((sum, p) => sum + p.porcentaje_participacion, 0);
 
   function handleAgregar(formData: FormData) {

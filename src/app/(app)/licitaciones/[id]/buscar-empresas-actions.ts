@@ -28,9 +28,10 @@ export async function buscarEmpresasRecomendadas(licitacionId: string) {
     );
   }
 
-  const { data: empresas, error: empresasError } = await supabase.from("empresas").select("id, nombre").order("nombre");
+  const { data: todasEmpresas, error: empresasError } = await supabase.from("empresas").select("*").order("nombre");
   if (empresasError) throw new Error(empresasError.message);
-  if (!empresas || empresas.length === 0) {
+  const empresas = (todasEmpresas ?? []).filter((e) => !e.archivada);
+  if (empresas.length === 0) {
     return { individuales: [], grupos: [] };
   }
 
